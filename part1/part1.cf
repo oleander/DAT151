@@ -1,0 +1,44 @@
+-- There are three kinds of comments.
+--    anything between tokens /* and */
+--    anything from token // to the end of a line or the file
+--    anything from token # to the end of a line or the file (preprocessor directive)
+comment "//" ;
+comment "#" ;
+comment "/*" "*/" ;
+
+-- A program is a sequence of definitions. A program may also contain
+-- comments and preprocessor directives, which are just ignored by the
+-- parser.
+PDefs. Program ::= [Def] ;
+terminator Def "" ;
+
+-- A function definition has a type, a name, an argument list, and a
+-- body. A function can optionally be prefixed by inline.
+
+-- An argument list is a comma-separated list of argument
+-- declarations. It is enclosed in parentheses ( and ).DFun. Def ::=
+-- Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+separator Arg "," ;
+terminator Stm "" ;
+
+
+ADecl. Arg ::= Type Id ;
+
+SExp. Stm ::= Exp ";" ;
+
+SDecl. Stm ::= Type Id ";" ;
+SDecls. Stm ::= Type Id "," [Id] ";" ;
+SInit. Stm ::= Type Id "=" Exp ";" ;
+
+
+SReturn. Stm ::= "return" Exp ";" ;
+SWhile. Stm ::= "while" "(" Exp ")" Stm ;
+SBlock. Stm ::= "{" [Stm] "}" ;
+SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
+
+-- Many statements can be used as top-level definitions: typedef
+-- statements, variable declarations and initializations, struct
+-- declarations.
+
+-- Finally, definitions for using qualified constants are allowed,
+-- e.g. using std::vector ;
