@@ -1,3 +1,6 @@
+-- Id; must start with a letter
+token Id (letter (letter | digit | '_')*) ;
+
 -- There are three kinds of comments.
 --    anything between tokens /* and */
 --    anything from token // to the end of a line or the file
@@ -11,6 +14,7 @@ comment "/*" "*/" ;
 -- parser.
 PDefs. Program ::= [Def] ;
 terminator Def "" ;
+terminator Id "" ;
 
 -- A function definition has a type, a name, an argument list, and a
 -- body. A function can optionally be prefixed by inline.
@@ -21,7 +25,6 @@ terminator Def "" ;
 separator Arg "," ;
 terminator Stm "" ;
 
-
 ADecl. Arg ::= Type Id ;
 
 SExp. Stm ::= Exp ";" ;
@@ -29,7 +32,7 @@ SExp. Stm ::= Exp ";" ;
 SDecl. Stm ::= Type Id ";" ;
 SDecls. Stm ::= Type Id "," [Id] ";" ;
 SInit. Stm ::= Type Id "=" Exp ";" ;
-
+DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 
 SReturn. Stm ::= "return" Exp ";" ;
 SWhile. Stm ::= "while" "(" Exp ")" Stm ;
@@ -42,3 +45,43 @@ SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 
 -- Finally, definitions for using qualified constants are allowed,
 -- e.g. using std::vector ;
+
+-- Defines literals, integers, floats and bools
+EInt. Exp15 ::= Integer ;
+EDouble. Exp15 ::= Double ;
+EString. Exp15 ::= String ;
+ETrue. Exp15 ::= "true" ;
+EFalse. Exp15 ::= "false" ;
+
+EId. Exp15 ::= Id ;
+ECall. Exp15 ::= Id "(" [Exp] ")" ;
+EPIncr. Exp14 ::= Exp15 "++" ;
+EPDecr. Exp14 ::= Exp15 "--" ;
+EIncr. Exp13 ::= "++" Exp14 ;
+EDecr. Exp13 ::= "--" Exp14 ;
+ENeg. Exp13 ::= "-" Exp14 ;
+EMul. Exp12 ::= Exp12 "*" Exp13 ;
+EDiv. Exp12 ::= Exp12 "/" Exp13 ;
+EAdd. Exp11 ::= Exp11 "+" Exp12 ;
+ESub. Exp11 ::= Exp11 "-" Exp12 ;
+ELt. Exp9 ::= Exp9 "<" Exp10 ;
+EGt. Exp9 ::= Exp9 ">" Exp10 ;
+ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
+EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
+EEq. Exp8 ::= Exp8 "==" Exp9 ;
+ENEq. Exp8 ::= Exp8 "!=" Exp9 ;
+EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
+EOr. Exp3 ::= Exp3 "||" Exp4 ;
+EAss. Exp2 ::= Exp3 "=" Exp2 ;
+
+-- Defines the highest precedence level
+-- In our case 'Exp15', ids
+coercions Exp 15 ;
+separator Exp "," ;
+
+-- Types
+Tbool. Type ::= "bool" ;
+Tdouble. Type ::= "double" ;
+Tint. Type ::= "int" ;
+Tstring. Type ::= "string" ;
+Tvoid. Type ::= "void" ;
