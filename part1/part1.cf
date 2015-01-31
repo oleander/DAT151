@@ -1,32 +1,124 @@
--- Id; must start with a letter
-token Id (letter (letter | digit | '_')*) ;
-
--- There are three kinds of comments.
---    anything between tokens /* and */
---    anything from token // to the end of a line or the file
---    anything from token # to the end of a line or the file (preprocessor directive)
-comment "//" ;
-comment "#" ;
-comment "/*" "*/" ;
-
 -- A program is a sequence of definitions. A program may also contain
 -- comments and preprocessor directives, which are just ignored by the
 -- parser.
 PDefs. Program ::= [Def] ;
 terminator Def "" ;
-terminator Id "" ;
 
--- A function definition has a type, a name, an argument list, and a
+-- Definitions
+
+-- 1. A function definition has a type, a name, an argument list, and a
 -- body. A function can optionally be prefixed by inline.
+    -- inline int foo(double x, int y)
+    -- {
+    --   return y + 9 ;
+    -- }
+
+-- 2. Many statements can be used as top-level definitions:
+--     typedef statements
+--     variable declarations and initializations
+--     struct declarations
+
+
+-- 3. Finally, definitions for using qualified constants are allowed, e.g.
+--     using std::vector ;
+
+
+-- Argument lists, declarations, and function bodies
 
 -- An argument list is a comma-separated list of argument
--- declarations. It is enclosed in parentheses ( and ).DFun. Def ::=
--- Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+-- declarations. It is enclosed in parentheses ( and ).
+
+-- An argument declaration always has a type. This type is optionally
+-- followed by an identifier or an identifier and an initialization,
+-- and optionally preceded by the specifier const. The following are
+-- examples of argument declarations.
+
+--     int
+--     int x
+--     int x = 5
+--     const int& x
+
+-- Notice that argument declarations with multiple variables (int x,
+-- y) are not included. A declaration that occurs as a statement (as
+-- shown below), can also have multiple variables. But it must have at
+-- least one variable.
+
+-- A function body is either a list of statements enclosed in curly
+-- brackets { and } (1), or an empty body consisting of a semicolon
+-- ;. Example:
+
+--     int foo(double x, int y) ;
+
+DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 separator Arg "," ;
 terminator Stm "" ;
 
 ADecl. Arg ::= Type Id ;
 
+-- Statements
+
+
+-- Any expression followed by a semicolon ; can be used as a statement.
+
+-- Any declaration followed by a semicolon ; can be used as a
+-- statement. Declarations have the same form as argument declarations
+-- in functions, except that they can have more than one variable.
+
+-- Statements returning an expression (1), for example
+
+--     return i + 9 ;
+
+-- While loops, with an expression in parentheses followed by a
+-- statement, for example:
+
+--     while (i < 10) ++i ;
+
+-- Do-while loops, with an expression in parentheses after the loop
+-- body, for example:
+
+--     do ++i ; while (i < 10) ;
+
+-- For loops, with a declaration and two expressions in parentheses
+-- followed by a statement. For example:
+
+--     for (int i = 0 ; i != 10 ; ++i) k = k + i ;
+
+-- We do not require that any of the fields in parentheses may be
+-- empty.
+
+-- Conditionals: if with an expression in parentheses followed by a
+-- statement and optionally by else and a statement. Examples:
+
+--     if (x > 0) return x ;
+
+--     if (x > 0) return x ; else return y ;
+
+-- Blocks: any list of statement (including empty list) between curly
+-- brackets. For instance,
+
+--     {
+--       int i = 2 ;
+--       {
+--       }
+--       i++ ;
+--     }
+
+-- Type definitions: a type and a name for it. Example:
+
+--     typedef vector<string> Text ;
+
+-- Structure definitions: a name and a list of declarations. Example:
+
+--     struct Student_info {
+--       string name;
+--       double final;
+--       vector<double> homework;
+--     } ;
+
+-- Notice that the semicolon is obligatory in the end of a structure
+-- definition. Otherwise, semicolons are not used after curly brackets
+-- - but they are obligatory in all statements and definitions not
+-- ending with curly brackets.
 SExp. Stm ::= Exp ";" ;
 
 SDecl. Stm ::= Type Id ";" ;
@@ -43,45 +135,155 @@ SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 -- statements, variable declarations and initializations, struct
 -- declarations.
 
--- Finally, definitions for using qualified constants are allowed,
--- e.g. using std::vector ;
-
 -- Defines literals, integers, floats and bools
-EInt. Exp15 ::= Integer ;
-EDouble. Exp15 ::= Double ;
-EString. Exp15 ::= String ;
-ETrue. Exp15 ::= "true" ;
-EFalse. Exp15 ::= "false" ;
 
+-- Expressions
+
+-- The following table gives the expressions, their precedence levels,
+-- and their associativity. The associativity of operators is given as
+-- left, right, or none. For binary operators, in general any of the
+-- three associativity is meaningful. For pre-, post-, and mixfix
+-- operators, at most one of left or right associativity makes sense,
+-- and the alternative is non-associative. As they are bracketed, the
+-- argument in an array index and the arguments in a function call can
+-- be expressions of any level. Otherwise, some subexpressions have to
+-- be one precedence level above of the main expression to implement
+-- the required the associativity.
+-- TODO double check associativities and precedences
+
+-- Defines the highest precedence level
+coercions Exp 16 ;
+separator Exp "," ;
+
+-- 16 	literal 	--- 	atomic expressions
+EDouble. Exp16 ::= Double ;
+EString. Exp16 ::= String ;
+EChar. Exp16 ::= Char ;
+ETrue. Exp16 ::= "true" ;
+EFalse. Exp16 ::= "false" ;
+-- 16 	i, c::i, c::c::i, ... 	--- 	qualified constants
+EQualifiedConst. Exp16 ::= QualifiedConstant
+-- 15 	e[e] 	left 	indexing
+EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
+-- 15 	e(e,...,e) 	none 	function call
 EId. Exp15 ::= Id ;
 ECall. Exp15 ::= Id "(" [Exp] ")" ;
+-- 14 	e.e, e->e 	left 	structure projection
+EDot. Exp14 ::= Exp14 "." Exp15
+EArrow. Exp14 ::= Exp14 "->" Exp15
+-- 14 	e++, e-- 	right 	in/decrement
 EPIncr. Exp14 ::= Exp15 "++" ;
 EPDecr. Exp14 ::= Exp15 "--" ;
+-- 13 	++e, --e, *e, !e 	left 	in/decrement, dereference, negation
 EIncr. Exp13 ::= "++" Exp14 ;
 EDecr. Exp13 ::= "--" Exp14 ;
 ENeg. Exp13 ::= "-" Exp14 ;
+-- 12 	e*e, e/e, e%e 	left 	multiplication, division, remainder
 EMul. Exp12 ::= Exp12 "*" Exp13 ;
 EDiv. Exp12 ::= Exp12 "/" Exp13 ;
+-- ERem. Exp12 ::= Exp12 "/" Exp13 ;
+-- 11 	e+e, e-e 	left 	addition, subtraction
 EAdd. Exp11 ::= Exp11 "+" Exp12 ;
 ESub. Exp11 ::= Exp11 "-" Exp12 ;
+-- 10 	e<<e, e>>e 	left 	left and right shift
+-- ELShift. Exp10 ::= Exp11 "<<" Exp12 ;
+-- ERShift. Exp10 ::= Exp11 ">>" Exp12 ;
+-- 9 	e<e, e>e, e>=e, e<=e 	none 	comparison
 ELt. Exp9 ::= Exp9 "<" Exp10 ;
 EGt. Exp9 ::= Exp9 ">" Exp10 ;
 ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
 EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
+-- 8 	e==e, e!=e 	none 	(in)equality
 EEq. Exp8 ::= Exp8 "==" Exp9 ;
 ENEq. Exp8 ::= Exp8 "!=" Exp9 ;
+-- 4 	e&&e 	left 	conjunction
 EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
+-- 3 	e||e 	left 	disjunction
 EOr. Exp3 ::= Exp3 "||" Exp4 ;
+-- 2 	e=e, e+=e, e-=e 	right 	assignment
 EAss. Exp2 ::= Exp3 "=" Exp2 ;
+EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
+EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
+-- 2 	e ? e : e 	right 	conditional
+ECond. Exp2 ::= Exp3 ? Exp3 : Exp2 ; -- FIXME doublecheck
+-- 1 	throw e 	right 	exception
+EException. Exp1 ::= throw Exp ;
 
--- Defines the highest precedence level
--- In our case 'Exp15', ids
-coercions Exp 15 ;
-separator Exp "," ;
+
+
+-- Qualified constants and template instantiations
+
+-- Qualified constants are constant names separated by ::. Names can
+-- be identifiers but also template instantiations, of the form
+
+--     ident < typelist >
+
+-- where a typelist is a comma-separated list of types. Thus possible
+-- qualified constants include
+
+--     std::cout
+--     std::vector<int>::const_iterator
+
+-- One simple way to implement qualified constants is as nonempty
+-- lists separated by ::. The elements of the list are identifiers and
+-- template instantiations. Single identifier expressions come out as
+-- a special case of these lists.
+QualifiedConstElems. QualifiedConst ::= [QualifiedConstElem] ;
+separator nonempty QualifiedConstElem "::" ;
+
+
 
 -- Types
-Tbool. Type ::= "bool" ;
-Tdouble. Type ::= "double" ;
-Tint. Type ::= "int" ;
-Tstring. Type ::= "string" ;
-Tvoid. Type ::= "void" ;
+
+-- Types are either qualified constants (including plain identifiers),
+-- or type references, or built-in types, of which we include the
+-- following:
+
+--     bool
+--     double
+--     int
+--     void
+TBool. Type ::= "bool" ;
+TDouble. Type ::= "double" ;
+TInt. Type ::= "int" ;
+TString. Type ::= "string" ;
+TVoid. Type ::= "void" ;
+
+-- The reference operator & is a postfix-operator forming types from
+-- types, e.g. int &.
+
+TRef. Type ::= Type "&" ; -- FIXME not sure
+
+
+
+-- Literals
+
+-- We include single-quoted character literals, double-quoted string
+-- literals, integer literals, and floating point literals.
+
+-- A string literal may consist of many can be concatenated strings
+-- and in this way divided over lines:
+
+--     "hello " "my little "
+--     "world"
+
+-- TODO see EString
+
+
+-- Identifiers
+
+-- An identifier is a letter followed by a list of letters, digits,
+-- and underscores.
+token Id (letter (letter | digit | '_')*) ;
+
+
+
+-- Comments
+
+-- There are three kinds of comments.
+--    anything between tokens /* and */
+--    anything from token // to the end of a line or the file
+--    anything from token # to the end of a line or the file (preprocessor directive)
+comment "//" ;
+comment "#" ;
+comment "/*" "*/" ;
