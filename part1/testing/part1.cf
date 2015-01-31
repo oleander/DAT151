@@ -17,11 +17,11 @@ DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
+-- TODO: Refactor int a = 10;
 ADecl . Arg ::= Type Id ;
-ADeclWExp. Arg ::= Type Id "=" Exp ;
+ADeclWExp . Arg ::= Type Id "=" Exp ;
 ADeclConst . Arg ::= "const" Type Id ;
-
-
+ADeclConstWExp . Arg ::= "const" Type Id "=" Exp ;
 -- typedefs
 
 -- Structs
