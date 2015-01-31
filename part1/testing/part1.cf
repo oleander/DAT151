@@ -12,13 +12,13 @@ comment "/*" "*/" ;
 -- typedef vector<string> Text;
 TypeDef . Def ::=  "typedef" QualifiedConst Id ";";
 
-
 DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
 ADecl. Arg ::= Type Id ;
+ADeclWExp. Arg ::= Type Id "=" Exp ;
 
 -- typedefs
 
