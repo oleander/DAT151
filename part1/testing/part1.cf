@@ -1,4 +1,7 @@
 PDefs . Program ::= [Def] ;
+separator nonempty Id "," ;
+terminator Stm "" ;
+
 terminator Def "" ;
 
 comment "//" ;
@@ -8,14 +11,17 @@ comment "/*" "*/" ;
 -- Functions
 DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 separator Arg "," ;
-terminator Stm "" ;
-terminator Id "" ;
 
 ADecl. Arg ::= Type Id ;
 
+-- Structs
+DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
+SMemberDecl . Member ::= Type Id ;
+terminator Member ";" ;
+
+-- Statements
 SExp. Stm ::= Exp ";" ;
-SDecl. Stm ::= Type Id ";" ;
-SDecls. Stm ::= Type Id "," [Id] ";" ;
+SDecls. Stm ::= Type [Id] ";" ;
 SInit. Stm ::= Type Id "=" Exp ";" ;
 
 SReturn. Stm ::= "return" Exp ";" ;
@@ -24,15 +30,28 @@ SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 
 -- Exps
----- 16   literal   ---   atomic expressions
+EQualifiedConst . Exp16 ::= QualifiedConst ;
+QualifiedConstElems . QualifiedConst ::= [QualifiedConstElem] ;
+separator QualifiedConstElem "::" ;
+
+QualifiedConstElemId . QualifiedConstElem ::= Id ;
+QualifiedConstElemT . QualifiedConstElem ::= Id "<" [Types] ">" ;
+separator Types "," ;
+
+TypeListElem . Types ::= Type ;
+
+StringElemx . StringElem ::= String ;
+EString . Exp16 ::= [StringElem] ;
+terminator nonempty StringElem "" ;
+
 EDouble. Exp16 ::= Double ;
+EInt . Exp16 ::= Integer ;
 EChar. Exp16 ::= Char ;
 ETrue. Exp16 ::= "true" ;
 EFalse. Exp16 ::= "false" ;
 -- 15   e[e]  left  indexing
 EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
 -- 15   e(e,...,e)  none  function call
-EId. Exp15 ::= Id ;
 ECall. Exp15 ::= Id "(" [Exp] ")" ;
 -- 14   e.e, e->e   left  structure projection
 EDot. Exp14 ::= Exp14 "." Exp15 ;
@@ -73,34 +92,11 @@ EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
 ECond. Exp2 ::= Exp3 "?" Exp3 ":" Exp2 ; -- FIXME doublecheck
 EException. Exp1 ::= "throw" Exp ;
 
-QualifiedConstElems . Exp16 ::= [QualifiedConstElem] ;
-separator QualifiedConstElem "::" ;
-
-QualifiedConstElemId . QualifiedConstElem ::= Id ;
-QualifiedConstElemT . QualifiedConstElem ::= Id "<" [Types] ">" ;
-separator Types "," ;
-
-TypeListElem . Types ::= Type ;
-
--- Strings
-StringElemx . StringElem ::= String ;
-EString . Exp16 ::= [StringElem] ;
-terminator nonempty StringElem "" ;
-
 coercions Exp 16 ;
 separator Exp "," ;
 
-TBool. Type ::= "bool" ;
-TDouble. Type ::= "double" ;
-TInt. Type ::= "int" ;
-TString. Type ::= "string" ;
-TVoid. Type ::= "void" ;
+rules Type ::= "bool" | "int" | "double" | "void" | "string";
 
 TPtr. Type ::= Type "&" ;
 
 token Id (letter (letter | digit | '_')*) ;
-
--- Structs
-DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
-SMemberDecl . Member ::= Type Id ;
-terminator Member ";" ;
