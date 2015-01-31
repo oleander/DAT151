@@ -9,10 +9,15 @@ comment "#" ;
 comment "/*" "*/" ;
 
 -- Functions
+-- typedef vector<string> Text;
+TypeDef . Def ::=  "typedef" QualifiedConst Id ";";
+
 DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 separator Arg "," ;
 
 ADecl. Arg ::= Type Id ;
+
+-- typedefs
 
 -- Structs
 DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
@@ -30,13 +35,13 @@ SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 
 -- Exps
+separator Types "," ;
+QualifiedConstElemId . QualifiedConstElem ::= Id ;
+QualifiedConstElemT . QualifiedConstElem ::= Id "<" [Types] ">" ;
+
 EQualifiedConst . Exp16 ::= QualifiedConst ;
 QualifiedConstElems . QualifiedConst ::= [QualifiedConstElem] ;
 separator QualifiedConstElem "::" ;
-
-QualifiedConstElemId . QualifiedConstElem ::= Id ;
-QualifiedConstElemT . QualifiedConstElem ::= Id "<" [Types] ">" ;
-separator Types "," ;
 
 TypeListElem . Types ::= Type ;
 
