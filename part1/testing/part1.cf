@@ -1,6 +1,77 @@
-token Id (letter (letter | digit | '_')*) ;
-coercions Exp 16 ;
-separator Exp "," ;
+PDefs . Program ::= [Def] ;
+terminator Def "" ;
+
+comment "//" ;
+comment "#" ;
+comment "/*" "*/" ;
+
+-- Functions
+DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+separator Arg "," ;
+terminator Stm "" ;
+terminator Id "" ;
+
+ADecl. Arg ::= Type Id ;
+
+SExp. Stm ::= Exp ";" ;
+SDecl. Stm ::= Type Id ";" ;
+SDecls. Stm ::= Type Id "," [Id] ";" ;
+SInit. Stm ::= Type Id "=" Exp ";" ;
+
+SReturn. Stm ::= "return" Exp ";" ;
+SWhile. Stm ::= "while" "(" Exp ")" Stm ;
+SBlock. Stm ::= "{" [Stm] "}" ;
+SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
+
+-- Exps
+---- 16   literal   ---   atomic expressions
+EDouble. Exp16 ::= Double ;
+EChar. Exp16 ::= Char ;
+ETrue. Exp16 ::= "true" ;
+EFalse. Exp16 ::= "false" ;
+-- 15   e[e]  left  indexing
+EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
+-- 15   e(e,...,e)  none  function call
+EId. Exp15 ::= Id ;
+ECall. Exp15 ::= Id "(" [Exp] ")" ;
+-- 14   e.e, e->e   left  structure projection
+EDot. Exp14 ::= Exp14 "." Exp15 ;
+EArrow. Exp14 ::= Exp14 "->" Exp15 ;
+-- 14   e++, e--  right   in/decrement
+EPIncr. Exp14 ::= Exp15 "++" ;
+EPDecr. Exp14 ::= Exp15 "--" ;
+-- 13   ++e, --e, *e, !e  left  in/decrement, dereference, negation
+EIncr. Exp13 ::= "++" Exp14 ;
+EDecr. Exp13 ::= "--" Exp14 ;
+ENeg. Exp13 ::= "-" Exp14 ;
+-- 12   e*e, e/e, e%e   left  multiplication, division, remainder
+EMul. Exp12 ::= Exp12 "*" Exp13 ;
+EDiv. Exp12 ::= Exp12 "/" Exp13 ;
+-- ERem. Exp12 ::= Exp12 "/" Exp13 ;
+-- 11   e+e, e-e  left  addition, subtraction
+EAdd. Exp11 ::= Exp11 "+" Exp12 ;
+ESub. Exp11 ::= Exp11 "-" Exp12 ;
+-- 10   e<<e, e>>e  left  left and right shift
+-- ELShift. Exp10 ::= Exp11 "<<" Exp12 ;
+-- ERShift. Exp10 ::= Exp11 ">>" Exp12 ;
+-- 9  e<e, e>e, e>=e, e<=e  none  comparison
+ELt. Exp9 ::= Exp9 "<" Exp10 ;
+EGt. Exp9 ::= Exp9 ">" Exp10 ;
+ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
+EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
+-- 8  e==e, e!=e  none  (in)equality
+EEq. Exp8 ::= Exp8 "==" Exp9 ;
+ENEq. Exp8 ::= Exp8 "!=" Exp9 ;
+-- 4  e&&e  left  conjunction
+EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
+-- 3  e||e  left  disjunction
+EOr. Exp3 ::= Exp3 "||" Exp4 ;
+-- 2  e=e, e+=e, e-=e   right   assignment
+EAss. Exp2 ::= Exp3 "=" Exp2 ;
+EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
+EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
+ECond. Exp2 ::= Exp3 "?" Exp3 ":" Exp2 ; -- FIXME doublecheck
+EException. Exp1 ::= "throw" Exp ;
 
 QualifiedConstElems . Exp16 ::= [QualifiedConstElem] ;
 separator QualifiedConstElem "::" ;
@@ -11,71 +82,13 @@ separator Types "," ;
 
 TypeListElem . Types ::= Type ;
 
--- TODO see EString
-
--- FIXME Change names
+-- Strings
 StringElemx . StringElem ::= String ;
 EString . Exp16 ::= [StringElem] ;
 terminator nonempty StringElem "" ;
 
-comment "//" ;
-comment "#" ;
-comment "/*" "*/" ;
-
--- Expressions
-
--- TODO double check associativities and precedences
-
----- 16   literal   ---   atomic expressions
-----EDouble. Exp16 ::= Double ;
-----EChar. Exp16 ::= Char ;
-----ETrue. Exp16 ::= "true" ;
-----EFalse. Exp16 ::= "false" ;
------- 15   e[e]  left  indexing
-----EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
------- 15   e(e,...,e)  none  function call
-----EId. Exp15 ::= Id ;
-----ECall. Exp15 ::= Id "(" [Exp] ")" ;
------- 14   e.e, e->e   left  structure projection
-----EDot. Exp14 ::= Exp14 "." Exp15 ;
-----EArrow. Exp14 ::= Exp14 "->" Exp15 ;
------- 14   e++, e--  right   in/decrement
-----EPIncr. Exp14 ::= Exp15 "++" ;
-----EPDecr. Exp14 ::= Exp15 "--" ;
------- 13   ++e, --e, *e, !e  left  in/decrement, dereference, negation
-----EIncr. Exp13 ::= "++" Exp14 ;
-----EDecr. Exp13 ::= "--" Exp14 ;
-----ENeg. Exp13 ::= "-" Exp14 ;
------- 12   e*e, e/e, e%e   left  multiplication, division, remainder
-----EMul. Exp12 ::= Exp12 "*" Exp13 ;
-----EDiv. Exp12 ::= Exp12 "/" Exp13 ;
------- ERem. Exp12 ::= Exp12 "/" Exp13 ;
------- 11   e+e, e-e  left  addition, subtraction
-----EAdd. Exp11 ::= Exp11 "+" Exp12 ;
-----ESub. Exp11 ::= Exp11 "-" Exp12 ;
------- 10   e<<e, e>>e  left  left and right shift
------- ELShift. Exp10 ::= Exp11 "<<" Exp12 ;
------- ERShift. Exp10 ::= Exp11 ">>" Exp12 ;
------- 9  e<e, e>e, e>=e, e<=e  none  comparison
-----ELt. Exp9 ::= Exp9 "<" Exp10 ;
-----EGt. Exp9 ::= Exp9 ">" Exp10 ;
-----ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
-----EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
------- 8  e==e, e!=e  none  (in)equality
-----EEq. Exp8 ::= Exp8 "==" Exp9 ;
-----ENEq. Exp8 ::= Exp8 "!=" Exp9 ;
------- 4  e&&e  left  conjunction
-----EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
------- 3  e||e  left  disjunction
-----EOr. Exp3 ::= Exp3 "||" Exp4 ;
------- 2  e=e, e+=e, e-=e   right   assignment
-----EAss. Exp2 ::= Exp3 "=" Exp2 ;
-----EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
-----EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
------- 2  e ? e : e   right   conditional
-----ECond. Exp2 ::= Exp3 "?" Exp3 ":" Exp2 ; -- FIXME doublecheck
------- 1  throw e   right   exception
-EException. Exp1 ::= "throw" Exp ;
+coercions Exp 16 ;
+separator Exp "," ;
 
 TBool. Type ::= "bool" ;
 TDouble. Type ::= "double" ;
@@ -83,4 +96,11 @@ TInt. Type ::= "int" ;
 TString. Type ::= "string" ;
 TVoid. Type ::= "void" ;
 
-TPtr. Type ::= Type "&" ; -- FIXME not sure
+TPtr. Type ::= Type "&" ;
+
+token Id (letter (letter | digit | '_')*) ;
+
+-- Structs
+--DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
+--SDecl . Member ::= Type Id ;
+--terminator Member ";" ;
