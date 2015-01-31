@@ -11,6 +11,7 @@ comment "/*" "*/" ;
 -- Functions
 -- typedef vector<string> Text;
 TypeDef . Def ::=  "typedef" QualifiedConst Id ";";
+UsingDef . Def ::=  "using" QualifiedConst ";";
 
 DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
