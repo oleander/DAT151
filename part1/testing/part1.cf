@@ -101,6 +101,6 @@ TPtr. Type ::= Type "&" ;
 token Id (letter (letter | digit | '_')*) ;
 
 -- Structs
---DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
---SDecl . Member ::= Type Id ;
---terminator Member ";" ;
+DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
+SMemberDecl . Member ::= Type Id ;
+terminator Member ";" ;
