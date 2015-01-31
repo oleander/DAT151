@@ -3,7 +3,6 @@
 -- parser.
 PDefs. Program ::= [Def] ;
 terminator Def "" ;
-terminator Id "" ;
 
 -- Definitions
 
@@ -136,10 +135,6 @@ SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 -- statements, variable declarations and initializations, struct
 -- declarations.
 
--- Finally, definitions for using qualified constants are allowed,
--- e.g. using std::vector ;
-
-
 -- Defines literals, integers, floats and bools
 
 -- Expressions
@@ -156,6 +151,10 @@ SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 -- the required the associativity.
 -- TODO double check associativities and precedences
 
+-- Defines the highest precedence level
+coercions Exp 16 ;
+separator Exp "," ;
+
 -- 16 	literal 	--- 	atomic expressions
 EDouble. Exp16 ::= Double ;
 EString. Exp16 ::= String ;
@@ -163,12 +162,15 @@ EChar. Exp16 ::= Char ;
 ETrue. Exp16 ::= "true" ;
 EFalse. Exp16 ::= "false" ;
 -- 16 	i, c::i, c::c::i, ... 	--- 	qualified constants
+EQualifiedConst. Exp16 ::= QualifiedConstant
 -- 15 	e[e] 	left 	indexing
+EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
 -- 15 	e(e,...,e) 	none 	function call
 EId. Exp15 ::= Id ;
 ECall. Exp15 ::= Id "(" [Exp] ")" ;
-
 -- 14 	e.e, e->e 	left 	structure projection
+EDot. Exp14 ::= Exp14 "." Exp15
+EArrow. Exp14 ::= Exp14 "->" Exp15
 -- 14 	e++, e-- 	right 	in/decrement
 EPIncr. Exp14 ::= Exp15 "++" ;
 EPDecr. Exp14 ::= Exp15 "--" ;
@@ -200,16 +202,14 @@ EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
 EOr. Exp3 ::= Exp3 "||" Exp4 ;
 -- 2 	e=e, e+=e, e-=e 	right 	assignment
 EAss. Exp2 ::= Exp3 "=" Exp2 ;
--- EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
--- EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
+EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
+EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
 -- 2 	e ? e : e 	right 	conditional
--- ECond. Exp2 ::= Exp ? Exp : Exp ;
+ECond. Exp2 ::= Exp3 ? Exp3 : Exp2 ; -- FIXME doublecheck
 -- 1 	throw e 	right 	exception
--- EException. Exp1 ::= throw Exp ;
+EException. Exp1 ::= throw Exp ;
 
--- Defines the highest precedence level
-coercions Exp 16 ;
-separator Exp "," ;
+
 
 -- Qualified constants and template instantiations
 
@@ -228,6 +228,8 @@ separator Exp "," ;
 -- lists separated by ::. The elements of the list are identifiers and
 -- template instantiations. Single identifier expressions come out as
 -- a special case of these lists.
+QualifiedConstElems. QualifiedConst ::= [QualifiedConstElem] ;
+separator nonempty QualifiedConstElem "::" ;
 
 
 
@@ -241,14 +243,16 @@ separator Exp "," ;
 --     double
 --     int
 --     void
+TBool. Type ::= "bool" ;
+TDouble. Type ::= "double" ;
+TInt. Type ::= "int" ;
+TString. Type ::= "string" ;
+TVoid. Type ::= "void" ;
 
 -- The reference operator & is a postfix-operator forming types from
 -- types, e.g. int &.
-Tbool. Type ::= "bool" ;
-Tdouble. Type ::= "double" ;
-Tint. Type ::= "int" ;
-Tstring. Type ::= "string" ;
-Tvoid. Type ::= "void" ;
+
+TRef. Type ::= Type "&" ; -- FIXME not sure
 
 
 
