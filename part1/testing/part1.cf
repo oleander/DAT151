@@ -17,8 +17,10 @@ DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
-ADecl. Arg ::= Type Id ;
+ADecl . Arg ::= Type Id ;
 ADeclWExp. Arg ::= Type Id "=" Exp ;
+ADeclConst . Arg ::= "const" Type Id ;
+
 
 -- typedefs
 
