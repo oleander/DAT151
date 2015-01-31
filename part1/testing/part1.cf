@@ -1,3 +1,47 @@
+-- Qualified constants and template instantiations
+
+-- Qualified constants are constant names separated by ::. Names can
+-- be identifiers but also template instantiations, of the form
+
+--     ident < typelist >
+
+-- where a typelist is a comma-separated list of types. Thus possible
+-- qualified constants include
+
+--     std::cout
+--     std::vector<int>::const_iterator
+
+-- One simple way to implement qualified constants is as nonempty
+-- lists separated by ::. The elements of the list are identifiers and
+-- template instantiations. Single identifier expressions come out as
+-- a special case of these lists.
+--QualifiedConstElems. QualifiedConst ::= [QualifiedConstElem] ;
+--separator nonempty QualifiedConstElem "::" ;
+
+QualifiedConstElems . Exp16 ::= [QualifiedConstElem] ;
+separator QualifiedConstElem "::" ;
+
+QualifiedConstElemId . QualifiedConstElem ::= Id ;
+QualifiedConstElemT . QualifiedConstElem ::= Id "<" [Types] ">" ;
+separator Types "," ;
+TypeListElem . Types ::= Type ;
+
+-- Types
+
+-- Types are either qualified constants (including plain identifiers),
+-- or type references, or built-in types, of which we include the
+-- following:
+
+--     bool
+--     double
+--     int
+--     void
+TBool. Type ::= "bool" ;
+TDouble. Type ::= "double" ;
+TInt. Type ::= "int" ;
+TString. Type ::= "string" ;
+TVoid. Type ::= "void" ;
+
 -- Defines the highest precedence level
 coercions Exp 16 ;
 separator Exp "," ;
@@ -16,9 +60,10 @@ separator Exp "," ;
 -- TODO see EString
 
 -- FIXME Change names
-EString . Exp ::= [StringElem] ;
-terminator StringElem "" ;
 StringElemx . StringElem ::= String ;
+EString . Exp16 ::= [StringElem] ;
+terminator nonempty StringElem "" ;
+
 
 -- Identifiers
 
