@@ -32,6 +32,11 @@ SInit. Stm ::= Type Id "=" Exp ";" ;
 -- TODO; refactor declaration
 SFor . Stm ::= "for" "(" Type Id "=" Exp ";" Exp ";" Exp ")" Exp ";" ;
 SReturn. Stm ::= "return" Exp ";" ;
+
+-- TODO
+-- Works: do ++i ; while (i);
+-- Does no work:   do ++i ; while (i < 10);
+SDo. Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
 SWhile. Stm ::= "while" "(" Exp ")" Stm ;
 SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
