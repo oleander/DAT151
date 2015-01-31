@@ -9,3 +9,17 @@ cabal-dev
 .cabal-sandbox/
 cabal.sandbox.config
 cabal.config
+
+*.bak
+Abspart*.hs
+Docpart*.txt
+ErrM.hs
+Lexpart*.hs
+Lexpart*.x
+Makefile
+Parpart*.hs
+*.y
+Printpart*.hs.bak
+Skelpart*.hs
+Printpart*.hs
+Testpart*
