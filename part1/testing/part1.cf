@@ -1,0 +1,38 @@
+-- Defines the highest precedence level
+coercions Exp 16 ;
+separator Exp "," ;
+
+-- Literals
+
+-- We include single-quoted character literals, double-quoted string
+-- literals, integer literals, and floating point literals.
+
+-- A string literal may consist of many can be concatenated strings
+-- and in this way divided over lines:
+
+--     "hello " "my little "
+--     "world"
+
+-- TODO see EString
+
+-- FIXME Change names
+EString . Exp ::= [StringElem] ;
+terminator StringElem "" ;
+StringElemx . StringElem ::= String ;
+
+-- Identifiers
+
+-- An identifier is a letter followed by a list of letters, digits,
+-- and underscores.
+token Id (letter (letter | digit | '_')*) ;
+
+-- Comments
+
+-- There are three kinds of comments.
+--    anything between tokens /* and */
+--    anything from token // to the end of a line or the file
+--    anything from token # to the end of a line or the file (preprocessor directive)
+
+comment "//" ;
+comment "#" ;
+comment "/*" "*/" ;
