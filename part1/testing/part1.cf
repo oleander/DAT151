@@ -10,8 +10,8 @@ comment "/*" "*/" ;
 
 -- Functions
 -- typedef vector<string> Text;
-TypeDef . Def ::=  "typedef" QualifiedConst Id ";";
-TypeExp . Stm ::=  "typedef" QualifiedConst Id;
+TypeDef . Def ::=  "typedef" QualifiedConst Type ";";
+TypeExp . Stm ::=  "typedef" QualifiedConst Type;
 UsingDef . Def ::=  "using" QualifiedConst ";";
 
 DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
@@ -103,6 +103,7 @@ ENeg. Exp13 ::= "-" Exp14 ;
 -- 12   e*e, e/e, e%e   left  multiplication, division, remainder
 EMul. Exp12 ::= Exp12 "*" Exp13 ;
 EDiv. Exp12 ::= Exp12 "/" Exp13 ;
+EMod. Exp12 ::= Exp12 "%" Exp13 ;
 -- ERem. Exp12 ::= Exp12 "/" Exp13 ;
 -- 11   e+e, e-e  left  addition, subtraction
 EAdd. Exp11 ::= Exp11 "+" Exp12 ;
@@ -132,7 +133,7 @@ EException. Exp1 ::= "throw" Exp ;
 coercions Exp 16 ;
 separator Exp "," ;
 
-rules Type ::= "bool" | "int" | "double" | "void" | "string";
+rules Type ::= "bool" | "int" | "double" | "void" | "string" | "vec_sz";
 
 TPtr. Type ::= Type "&" ;
 
