@@ -39,30 +39,13 @@ SQConst . Stm ::= QualifiedConst Id ";" ;
 
 -- std::cin >> variable;
 -- cin >> midterm >> final;
-SId . StmId ::= Id ;
-SReadInto . Stm ::= QualifiedConst ">>" [StmId] ";" ;
-separator StmId ">>" ;
+EId . EtmId ::= Id ;
+EReadInto . Exp ::= QualifiedConst ">>" [EtmId] ;
+separator EtmId ">>" ;
 
 -- TODO; refactor declaration
 SFor . Stm ::= "for" "(" Type Id "=" Exp ";" Exp ";" Exp ")" Exp ";" ;
 SReturn. Stm ::= "return" Exp ";" ;
-
--- TODO
--- Works: do ++i ; while (i);
--- Does no work:   do ++i ; while (i < 10);
-SDo. Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
-SWhile. Stm ::= "while" "(" Exp ")" Stm ;
-SBlock. Stm ::= "{" [Stm] "}" ;
-SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
-SIf. Stm ::= "if" "(" Exp ")" Stm ;
-
--- std::cout << "Hello, " << name  << "!" << std::endl;
--- TODO: Is this really a statement?
-SOutString . SOut ::= [StringElem] ;
-SOutQConst . SOut ::= QualifiedConst ;
-SOutId . SOut ::= Id ;
-SOutStm . Stm ::= QualifiedConst "<<" [SOut] ";" ;
-separator SOut "<<" ;
 
 -- Exps
 separator Types "," ;
@@ -80,6 +63,22 @@ TypeListElem . Types ::= Type ;
 StringElemx . StringElem ::= String ;
 EString . Exp16 ::= [StringElem] ;
 terminator nonempty StringElem "" ;
+
+-- std::cout << "Hello, " << name  << "!" << std::endl;
+EOutString . EOut ::= [StringElem] ;
+EOutQConst . EOut ::= QualifiedConst ;
+EOutId . EOut ::= Id ;
+EOutStm . Exp ::= QualifiedConst "<<" [EOut] ;
+separator EOut "<<" ;
+
+-- TODO
+-- Works: do ++i ; while (i);
+-- Does no work:   do ++i ; while (i < 10);
+SDo. Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
+SWhile. Stm ::= "while" "(" Exp ")" Stm ;
+SBlock. Stm ::= "{" [Stm] "}" ;
+SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
+SIf. Stm ::= "if" "(" Exp ")" Stm ;
 
 EDouble. Exp16 ::= Double ;
 EInt . Exp16 ::= Integer ;
@@ -112,7 +111,7 @@ ESub. Exp11 ::= Exp11 "-" Exp12 ;
 -- ERShift. Exp10 ::= Exp11 ">>" Exp12 ;
 -- 9  e<e, e>e, e>=e, e<=e  none  comparison
 ELt. Exp9 ::= Exp9 "<" Exp10 ;
-EGt. Exp9 ::= Exp9 ">" Exp10 ;
+EGt. Exp9 ::= Exp10 ">" Exp9 ;
 ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
 EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
 -- 8  e==e, e!=e  none  (in)equality
