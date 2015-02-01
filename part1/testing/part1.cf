@@ -14,20 +14,23 @@ TypeDef . Def ::=  "typedef" QualifiedConst Type ";";
 TypeExp . Stm ::=  "typedef" QualifiedConst Type;
 UsingDef . Def ::=  "using" QualifiedConst ";";
 
-DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
-DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
+DRType . RType ::= Type Id ;
+DRQConstType . RType ::= QualifiedConst Id;
+DFun. Def ::= RType "(" [Arg] ")" "{" [Stm] "}" ;
+DEmptyFun. Def ::= RType "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
 -- void gen_aux(vector<string>&);
+-- const Grammar& g
 
 ADeclBaseWOId . Arg ::= Type;
 ADeclBase . Arg ::= Type Id ;
 ADeclPtr . Arg ::= Type "&" Id ;
 ADeclQConstWOId . Arg ::= QualifiedConst;
+ADeclConstC . Arg ::= "const" Arg ;
 ADeclQConst . Arg ::= Arg "&";
 ADeclQConstPtr . Arg ::= Arg Id ;
-ADeclConstC . Arg ::= "const" Arg ;
 ADecl . Arg ::= Arg "=" Exp ;
 -- typedefs
 
