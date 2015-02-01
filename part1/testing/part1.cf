@@ -90,6 +90,7 @@ EInt . Exp16 ::= Integer ;
 EChar. Exp16 ::= Char ;
 ETrue. Exp16 ::= "true" ;
 EFalse. Exp16 ::= "false" ;
+ENeg. Exp16 ::= "!" Exp16 ;
 -- 15   e[e]  left  indexing
 EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
 -- 15   e(e,...,e)  none  function call
