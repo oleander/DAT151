@@ -31,9 +31,13 @@ SMemberDecl . Member ::= Type Id ;
 terminator Member ";" ;
 
 -- Statements
-SExp. Stm ::= Exp ";" ;
-SDecls. Stm ::= Type [Id] ";" ;
-SInit. Stm ::= Type Id "=" Exp ";" ;
+SExp . Stm ::= Exp ";" ;
+SDecls . Stm ::= Type [Id] ";" ;
+SInit . Stm ::= Type Id "=" Exp ";" ;
+-- std::string variable;
+SQConst . Stm ::= QualifiedConst Id ";" ;
+-- std::cin >> variable;
+SReadInto . Stm ::= QualifiedConst ">>" Id ";" ;
 
 -- TODO; refactor declaration
 SFor . Stm ::= "for" "(" Type Id "=" Exp ";" Exp ";" Exp ")" Exp ";" ;
@@ -51,6 +55,8 @@ SIf. Stm ::= "if" "(" Exp ")" Stm ;
 -- Exps
 separator Types "," ;
 QualifiedConstElemId . QualifiedConstElem ::= Id ;
+-- Values like 'string' is not included in Id
+QualifiedConstElemType . QualifiedConstElem ::= Type ;
 QualifiedConstElemT . QualifiedConstElem ::= Id "<" [Types] ">" ;
 
 EQualifiedConst . Exp16 ::= QualifiedConst ;
