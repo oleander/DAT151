@@ -43,9 +43,15 @@ terminator Member ";" ;
 SExp . Stm ::= Exp ";" ;
 SDecls . Stm ::= Type [Id] ";" ;
 -- std::string variable;
-SQConst . Stm ::= QualifiedConst Id ";" ;
-SQConstInit . Stm ::= QualifiedConst Id "=" Exp ";" ;
-SInit . Stm ::= Type Id "=" Exp ";" ;
+-- const Rule_collection & c = 1;
+-- TODO: Rename SBase{n}
+SBase1 . Stm ::= Type Id ;
+SBase2 . Stm ::= Id ;
+SBase3 . Stm ::= "&" Stm ;
+SBase4 . Stm ::= Type Stm ;
+SBase5 . Stm ::= "const" Stm ;
+SQConst . Stm ::= QualifiedConst Id ;
+SInit . Stm ::= Stm "=" Exp ";" ;
 
 -- std::cin >> variable;
 -- cin >> midterm >> final;
