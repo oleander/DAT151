@@ -60,7 +60,7 @@ EReadInto . Exp ::= QualifiedConst ">>" [EtmId] ;
 separator EtmId ">>" ;
 
 -- TODO; refactor declaration
-SFor . Stm ::= "for" "(" Type Id "=" Exp ";" Exp ";" Exp ")" Exp ";" ;
+SFor . Stm ::= "for" "(" Stm Exp ";" Exp ")" Exp ";" ;
 SReturn. Stm ::= "return" Exp ";" ;
 
 -- Exps
