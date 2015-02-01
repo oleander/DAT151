@@ -59,7 +59,6 @@ EId . EtmId ::= Id ;
 EReadInto . Exp ::= QualifiedConst ">>" [EtmId] ;
 separator EtmId ">>" ;
 
--- TODO; refactor declaration
 SFor . Stm ::= "for" "(" Stm Exp ";" Exp ")" Exp ";" ;
 SReturn. Stm ::= "return" Exp ";" ;
 
@@ -88,9 +87,6 @@ EOutId . EOut ::= Id ;
 EOutStm . Exp ::= QualifiedConst "<<" [EOut] ;
 separator EOut "<<" ;
 
--- TODO
--- Works: do ++i ; while (i);
--- Does no work:   do ++i ; while (i < 10);
 SDo. Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
 SWhile. Stm ::= "while" "(" Exp ")" Stm ;
 SBlock. Stm ::= "{" [Stm] "}" ;
@@ -129,6 +125,7 @@ ESub. Exp11 ::= Exp11 "-" Exp12 ;
 -- ELShift. Exp10 ::= Exp11 "<<" Exp12 ;
 -- ERShift. Exp10 ::= Exp11 ">>" Exp12 ;
 -- 9  e<e, e>e, e>=e, e<=e  none  comparison
+-- TODO: Works i > 10, does NOT work i < 10
 ELt. Exp9 ::= Exp9 "<" Exp10 ;
 EGt. Exp9 ::= Exp10 ">" Exp9 ;
 ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
