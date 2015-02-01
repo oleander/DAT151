@@ -68,6 +68,7 @@ terminator nonempty StringElem "" ;
 -- std::cout << "Hello, " << name  << "!" << std::endl;
 EOutString . EOut ::= [StringElem] ;
 EOutQConst . EOut ::= QualifiedConst ;
+EOutExp . EOut ::= Exp ;
 EOutId . EOut ::= Id ;
 EOutStm . Exp ::= QualifiedConst "<<" [EOut] ;
 separator EOut "<<" ;
@@ -133,7 +134,7 @@ EException. Exp1 ::= "throw" Exp ;
 coercions Exp 16 ;
 separator Exp "," ;
 
-rules Type ::= "bool" | "int" | "double" | "void" | "string" | "vec_sz";
+rules Type ::= "bool" | "int" | "double" | "void" | "string" | "vec_sz" | Id;
 
 TPtr. Type ::= Type "&" ;
 
