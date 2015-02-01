@@ -19,12 +19,15 @@ DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
+-- void gen_aux(vector<string>&);
+
+ADeclBaseWOId . Arg ::= Type;
 ADeclBase . Arg ::= Type Id ;
 ADeclPtr . Arg ::= Type "&" Id ;
--- TODO: Refactor Ptr
-ADeclQConst . Arg ::= QualifiedConst Id ;
-ADeclQConstPtr . Arg ::= QualifiedConst "&" Id ;
-ADeclConst . Arg ::= "const" Arg ;
+ADeclQConstWOId . Arg ::= QualifiedConst;
+ADeclQConst . Arg ::= Arg "&";
+ADeclQConstPtr . Arg ::= Arg Id ;
+ADeclConstC . Arg ::= "const" Arg ;
 ADecl . Arg ::= Arg "=" Exp ;
 -- typedefs
 
