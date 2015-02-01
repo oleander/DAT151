@@ -52,6 +52,14 @@ SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 SIf. Stm ::= "if" "(" Exp ")" Stm ;
 
+-- std::cout << "Hello, " << name  << "!" << std::endl;
+-- TODO: Is this really a statement?
+SOutString . SOut ::= StringElem ;
+SOutQConst . SOut ::= QualifiedConst ;
+SOutId . SOut ::= Id ;
+SOutStm . Stm ::= QualifiedConst "<<" [SOut] ";" ;
+separator SOut "<<" ;
+
 -- Exps
 separator Types "," ;
 QualifiedConstElemId . QualifiedConstElem ::= Id ;
