@@ -19,9 +19,6 @@ DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
---double grade(const vector<double>& hw) {
-
-
 ADeclBase . Arg ::= Type Id ;
 ADeclPtr . Arg ::= Type "&" Id ;
 -- TODO: Refactor Ptr
@@ -29,13 +26,6 @@ ADeclQConst . Arg ::= QualifiedConst Id ;
 ADeclQConstPtr . Arg ::= QualifiedConst "&" Id ;
 ADeclConst . Arg ::= "const" Arg ;
 ADecl . Arg ::= Arg "=" Exp ;
-
---const vector<double>& hw
---const vector& hw
---vector& hw
---vector hw
---vector hw = x
-
 -- typedefs
 
 -- Structs
@@ -46,9 +36,10 @@ terminator Member ";" ;
 -- Statements
 SExp . Stm ::= Exp ";" ;
 SDecls . Stm ::= Type [Id] ";" ;
-SInit . Stm ::= Type Id "=" Exp ";" ;
 -- std::string variable;
 SQConst . Stm ::= QualifiedConst Id ";" ;
+SQConstInit . Stm ::= QualifiedConst Id "=" Exp ";" ;
+SInit . Stm ::= Type Id "=" Exp ";" ;
 
 -- std::cin >> variable;
 -- cin >> midterm >> final;
