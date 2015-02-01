@@ -19,11 +19,23 @@ DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
--- TODO: Refactor int a = 10;
-ADecl . Arg ::= Type Id ;
-ADeclWExp . Arg ::= Type Id "=" Exp ;
-ADeclConst . Arg ::= "const" Type Id ;
-ADeclConstWExp . Arg ::= "const" Type Id "=" Exp ;
+--double grade(const vector<double>& hw) {
+
+
+ADeclBase . Arg ::= Type Id ;
+ADeclPtr . Arg ::= Type "&" Id ;
+-- TODO: Refactor Ptr
+ADeclQConst . Arg ::= QualifiedConst Id ;
+ADeclQConstPtr . Arg ::= QualifiedConst "&" Id ;
+ADeclConst . Arg ::= "const" Arg ;
+ADecl . Arg ::= Arg "=" Exp ;
+
+--const vector<double>& hw
+--const vector& hw
+--vector& hw
+--vector hw
+--vector hw = x
+
 -- typedefs
 
 -- Structs
