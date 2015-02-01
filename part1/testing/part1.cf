@@ -36,8 +36,12 @@ SDecls . Stm ::= Type [Id] ";" ;
 SInit . Stm ::= Type Id "=" Exp ";" ;
 -- std::string variable;
 SQConst . Stm ::= QualifiedConst Id ";" ;
+
 -- std::cin >> variable;
-SReadInto . Stm ::= QualifiedConst ">>" Id ";" ;
+-- cin >> midterm >> final;
+SId . StmId ::= Id ;
+SReadInto . Stm ::= QualifiedConst ">>" [StmId] ";" ;
+separator StmId ">>" ;
 
 -- TODO; refactor declaration
 SFor . Stm ::= "for" "(" Type Id "=" Exp ";" Exp ";" Exp ")" Exp ";" ;
