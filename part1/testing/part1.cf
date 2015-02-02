@@ -11,13 +11,11 @@ comment "/*" "*/" ;
 -- Functions
 -- typedef vector<string> Text;
 TypeDef . Def ::=  "typedef" QualifiedConst Type ";";
-TypeExp . Stm ::=  "typedef" QualifiedConst Type;
+TypeExp . Stm ::=  "typedef" QualifiedConst Type ";";
 UsingDef . Def ::=  "using" QualifiedConst ";";
 
-DRType . RType ::= Type Id ;
-DRQConstType . RType ::= QualifiedConst Id;
-DFun. Def ::= RType "(" [Arg] ")" "{" [Stm] "}" ;
-DEmptyFun. Def ::= RType "(" [Arg] ")" ";" ;
+DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
@@ -26,11 +24,6 @@ separator Arg "," ;
 
 ADeclBaseWOId . Arg ::= Type;
 ADeclBase . Arg ::= Type Id ;
-ADeclPtr . Arg ::= Type "&" Id ;
-ADeclQConstWOId . Arg ::= QualifiedConst;
-ADeclConstC . Arg ::= "const" Arg ;
-ADeclQConst . Arg ::= Arg "&";
-ADeclQConstPtr . Arg ::= Arg Id ;
 ADecl . Arg ::= Arg "=" Exp ;
 -- typedefs
 
@@ -42,63 +35,40 @@ terminator Member ";" ;
 -- Statements
 SExp . Stm ::= Exp ";" ;
 SDecls . Stm ::= Type [Id] ";" ;
--- std::string variable;
--- const Rule_collection & c = 1;
--- TODO: Rename SBase{n}
-SBase1 . Stm ::= Type Id ;
-SBase2 . Stm ::= Id ;
-SBase3 . Stm ::= "&" Stm ;
-SBase4 . Stm ::= Type Stm ;
-SBase5 . Stm ::= "const" Stm ;
-SQConst . Stm ::= QualifiedConst Id ;
-SInit . Stm ::= Stm "=" Exp ";" ;
-
--- std::cin >> variable;
--- cin >> midterm >> final;
-EId . EtmId ::= Id ;
-EReadInto . Exp ::= QualifiedConst ">>" [EtmId] ;
-separator EtmId ">>" ;
-
+SInit . Stm ::= Type [Id] "=" [Exp] ";" ;
 SFor . Stm ::= "for" "(" Stm Exp ";" Exp ")" Exp ";" ;
 SReturn. Stm ::= "return" Exp ";" ;
-
--- Exps
-separator Types "," ;
-QualifiedConstElemId . QualifiedConstElem ::= Id ;
--- Values like 'string' is not included in Id
-QualifiedConstElemType . QualifiedConstElem ::= Type ;
-QualifiedConstElemT . QualifiedConstElem ::= Id "<" [Types] ">" ;
-
-EQualifiedConst . Exp16 ::= QualifiedConst ;
-QualifiedConstElems . QualifiedConst ::= [QualifiedConstElem] ;
-separator QualifiedConstElem "::" ;
-
-TypeListElem . Types ::= Type ;
-
-StringElemx . StringElem ::= String ;
-EString . Exp16 ::= [StringElem] ;
-terminator nonempty StringElem "" ;
-
--- std::cout << "Hello, " << name  << "!" << std::endl;
-EOutString . EOut ::= [StringElem] ;
-EOutQConst . EOut ::= QualifiedConst ;
-EOutExp . EOut ::= Exp ;
-EOutId . EOut ::= Id ;
-EOutStm . Exp ::= QualifiedConst "<<" [EOut] ;
-separator EOut "<<" ;
-
 SDo. Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
 SWhile. Stm ::= "while" "(" Exp ")" Stm ;
 SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 SIf. Stm ::= "if" "(" Exp ")" Stm ;
 
+-- Exps
+-- bla<bool,bloop>::x::y<q,r>
+-- std::vector<string>::const_iterator it = sentence.begin();
+separator Types "," ;
+TypeListElem . Types ::= Type ;
+QualifiedConstElemId . QualifiedConstElem ::= Id ;
+-- Values like 'string' is not included in Id
+QualifiedConstElemInstance . QualifiedConstElem ::= Id "<" [Types] ">" ;
+
+EQualifiedConst . Exp16 ::= QualifiedConst ;
+QualifiedConstElems . QualifiedConst ::= [QualifiedConstElem] ;
+separator nonempty QualifiedConstElem "::" ;
+
+StringElemx . StringElem ::= String ;
+EString . Exp16 ::= [StringElem] ;
+terminator nonempty StringElem "" ;
+
 EDouble. Exp16 ::= Double ;
 EInt . Exp16 ::= Integer ;
 EChar. Exp16 ::= Char ;
 ETrue. Exp16 ::= "true" ;
 EFalse. Exp16 ::= "false" ;
-ENeg. Exp16 ::= "!" Exp ;
+EBoolNeg. Exp16 ::= "!" Exp ;
+EDeref. Exp16 ::= "*" Exp ;
+EAddressOf. Exp16 ::= "&" Exp ;
 -- 15   e[e]  left  indexing
 EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
 -- 15   e(e,...,e)  none  function call
@@ -122,14 +92,14 @@ EMod. Exp12 ::= Exp12 "%" Exp13 ;
 EAdd. Exp11 ::= Exp11 "+" Exp12 ;
 ESub. Exp11 ::= Exp11 "-" Exp12 ;
 -- 10   e<<e, e>>e  left  left and right shift
--- ELShift. Exp10 ::= Exp11 "<<" Exp12 ;
--- ERShift. Exp10 ::= Exp11 ">>" Exp12 ;
+ELShift. Exp10 ::= Exp10 "<<" Exp11 ;
+ERShift. Exp10 ::= Exp10 ">>" Exp11 ;
 -- 9  e<e, e>e, e>=e, e<=e  none  comparison
 -- TODO: Works i > 10, does NOT work i < 10
-ELt. Exp9 ::= Exp9 "<" Exp10 ;
-EGt. Exp9 ::= Exp10 ">" Exp9 ;
 ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
 EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
+ELt. Exp9 ::= Exp9 "<" Exp10 ;
+EGt. Exp9 ::= Exp9 ">" Exp10 ;
 -- 8  e==e, e!=e  none  (in)equality
 EEq. Exp8 ::= Exp8 "==" Exp9 ;
 ENEq. Exp8 ::= Exp8 "!=" Exp9 ;
@@ -141,15 +111,16 @@ EOr. Exp3 ::= Exp3 "||" Exp4 ;
 EAss. Exp2 ::= Exp3 "=" Exp2 ;
 EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
 EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
-ECond. Exp2 ::= Exp3 "?" Exp3 ":" Exp2 ; -- FIXME doublecheck
+ECond. Exp2 ::= Exp3 "?" Exp3 ":" Exp2 ;
 EException. Exp1 ::= "throw" Exp ;
 
 coercions Exp 16 ;
 separator Exp "," ;
 
-rules Type ::= "bool" | "int" | "double" | "void" | "string" | "vec_sz" | Id;
+rules Type ::= "bool" | "int" | "double" | "void" | QualifiedConst;
 
-TPtr. Type ::= Type "&" ;
-TStr. Type ::= "*" Type ;
+TRef. Type ::= Type "&" ;
+TPtr. Type ::= Type "*" ;
+TConst . Type ::= "const" Type ;
 
 token Id (letter (letter | digit | '_')*) ;
