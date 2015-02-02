@@ -27,8 +27,7 @@ SMemberDecl . Member ::= Type Id ;
 terminator Member ";" ;
 
 -- Statements
-SExp . Stm ::= Exp ";" ;
-SDecls . Stm ::= Type [Id] ";" ;
+SExp . Stm2 ::= Exp ";" ;
 SInit . Stm ::= Type [Id] "=" [Exp] ";" ;
 SFor . Stm ::= "for" "(" Stm Exp ";" Exp ")" Exp ";" ;
 SReturn. Stm ::= "return" Exp ";" ;
@@ -37,6 +36,9 @@ SWhile. Stm ::= "while" "(" Exp ")" Stm ;
 SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 SIf. Stm ::= "if" "(" Exp ")" Stm ;
+SDecls . Stm ::= Type [Id] ";" ;
+
+coercions Stm 2 ;
 
 separator Types "," ;
 TypeListElem . Types ::= Type ;
@@ -57,8 +59,8 @@ EChar. Exp16 ::= Char ;
 ETrue. Exp16 ::= "true" ;
 EFalse. Exp16 ::= "false" ;
 EBoolNeg. Exp16 ::= "!" Exp ;
-EDeref. Exp16 ::= "*" Exp ;
-EAddressOf. Exp16 ::= "&" Exp ;
+EIndirection. Exp16 ::= "*" Exp ;
+EAddress. Exp16 ::= "&" Exp ;
 EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
 ECall. Exp15 ::= Id "(" [Exp] ")" ;
 EDot. Exp14 ::= Exp14 "." Exp15 ;
