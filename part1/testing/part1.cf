@@ -8,8 +8,6 @@ comment "//" ;
 comment "#" ;
 comment "/*" "*/" ;
 
--- Functions
--- typedef vector<string> Text;
 TypeDef . Def ::=  "typedef" QualifiedConst Type ";";
 TypeExp . Stm ::=  "typedef" QualifiedConst Type ";";
 UsingDef . Def ::=  "using" QualifiedConst ";";
@@ -19,13 +17,9 @@ DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
 
 separator Arg "," ;
 
--- void gen_aux(vector<string>&);
--- const Grammar& g
-
 ADeclBaseWOId . Arg ::= Type;
 ADeclBase . Arg ::= Type Id ;
 ADecl . Arg ::= Arg "=" Exp ;
--- typedefs
 
 -- Structs
 DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
@@ -44,13 +38,9 @@ SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 SIf. Stm ::= "if" "(" Exp ")" Stm ;
 
--- Exps
--- bla<bool,bloop>::x::y<q,r>
--- std::vector<string>::const_iterator it = sentence.begin();
 separator Types "," ;
 TypeListElem . Types ::= Type ;
 QualifiedConstElemId . QualifiedConstElem ::= Id ;
--- Values like 'string' is not included in Id
 QualifiedConstElemInstance . QualifiedConstElem ::= Id "<" [Types] ">" ;
 
 EQualifiedConst . Exp16 ::= QualifiedConst ;
@@ -69,45 +59,30 @@ EFalse. Exp16 ::= "false" ;
 EBoolNeg. Exp16 ::= "!" Exp ;
 EDeref. Exp16 ::= "*" Exp ;
 EAddressOf. Exp16 ::= "&" Exp ;
--- 15   e[e]  left  indexing
 EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
--- 15   e(e,...,e)  none  function call
 ECall. Exp15 ::= Id "(" [Exp] ")" ;
--- 14   e.e, e->e   left  structure projection
 EDot. Exp14 ::= Exp14 "." Exp15 ;
 EArrow. Exp14 ::= Exp14 "->" Exp15 ;
--- 14   e++, e--  right   in/decrement
 EPIncr. Exp14 ::= Exp15 "++" ;
 EPDecr. Exp14 ::= Exp15 "--" ;
--- 13   ++e, --e, *e, !e  left  in/decrement, dereference, negation
 EIncr. Exp13 ::= "++" Exp14 ;
 EDecr. Exp13 ::= "--" Exp14 ;
 ENeg. Exp13 ::= "-" Exp14 ;
--- 12   e*e, e/e, e%e   left  multiplication, division, remainder
 EMul. Exp12 ::= Exp12 "*" Exp13 ;
 EDiv. Exp12 ::= Exp12 "/" Exp13 ;
 EMod. Exp12 ::= Exp12 "%" Exp13 ;
--- ERem. Exp12 ::= Exp12 "/" Exp13 ;
--- 11   e+e, e-e  left  addition, subtraction
 EAdd. Exp11 ::= Exp11 "+" Exp12 ;
 ESub. Exp11 ::= Exp11 "-" Exp12 ;
--- 10   e<<e, e>>e  left  left and right shift
 ELShift. Exp10 ::= Exp10 "<<" Exp11 ;
 ERShift. Exp10 ::= Exp10 ">>" Exp11 ;
--- 9  e<e, e>e, e>=e, e<=e  none  comparison
--- TODO: Works i > 10, does NOT work i < 10
 ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
 EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
 ELt. Exp9 ::= Exp9 "<" Exp10 ;
 EGt. Exp9 ::= Exp9 ">" Exp10 ;
--- 8  e==e, e!=e  none  (in)equality
 EEq. Exp8 ::= Exp8 "==" Exp9 ;
 ENEq. Exp8 ::= Exp8 "!=" Exp9 ;
--- 4  e&&e  left  conjunction
 EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
--- 3  e||e  left  disjunction
 EOr. Exp3 ::= Exp3 "||" Exp4 ;
--- 2  e=e, e+=e, e-=e   right   assignment
 EAss. Exp2 ::= Exp3 "=" Exp2 ;
 EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
 EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
