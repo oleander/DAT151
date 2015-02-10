@@ -23,3 +23,11 @@ Printpart*.hs.bak
 Skelpart*.hs
 Printpart*.hs
 Testpart*
+/part2/AbsCPP.hs
+/part2/DocCPP.txt
+/part2/LexCPP.hs
+/part2/LexCPP.x
+/part2/ParCPP.hs
+/part2/PrintCPP.hs
+/part2/SkelCPP.hs
+/part2/TestCPP.hs
