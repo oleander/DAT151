@@ -136,6 +136,28 @@ inferExp (EEq a b) =
     -- (Ok Type_string) -> Ok Type_bool
     (Ok t)           -> Bad $ "can't run == on " ++ (show t)
     e                -> e
+
+-- a != b
+inferExp (ENEq a b) =
+  case inferExp a of
+    (Ok Type_double) -> Ok Type_bool
+    (Ok Type_int)    -> Ok Type_bool
+    -- (Ok Type_string) -> Ok Type_bool
+    (Ok t)           -> Bad $ "can't run == on " ++ (show t)
+    e                -> e
+
+-- a && b
+inferExp (EAnd a b) =
+  case ((inferExp a), (inferExp b)) of
+    ((Ok Type_bool), (Ok Type_bool)) -> Ok Type_bool
+    e                                 -> Bad "can't run && on non bools"
+
+-- a || b
+inferExp (EOr a b) =
+  case ((inferExp a), (inferExp b)) of
+    ((Ok Type_bool), (Ok Type_bool)) -> Ok Type_bool
+    e                                -> Bad "can't run || on non bools"
+
 -- Regular int
 inferExp (EInt i) = Ok Type_int
 
