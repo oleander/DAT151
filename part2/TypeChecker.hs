@@ -37,6 +37,11 @@ inferStm (s:stms)             =
         Ok t         -> [Bad $ "only bool allowed in while not " ++ (show t)]
         st           -> [st]
     SBlock stms      -> inferStm stms
+    SIfElse e s1 s2  ->
+      case inferExp e of
+        Ok Type_bool -> (inferStm [s1]) ++ (inferStm [s2])
+        Ok t         -> [Bad $ "only bool allowed in if else not " ++ (show t)]
+        st           -> [st]
     s'         -> (Bad $ "statement " ++ (show s') ++ " not matched") : inferStm stms
 
 -- n--
