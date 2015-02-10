@@ -3,24 +3,35 @@ module TypeChecker where
 import AbsCPP
 import PrintCPP
 import ErrM
+import Debug.Trace
+
 -- TODO: Check all defs, not just the first one
 typecheck :: Program -> Err ()
-typecheck (PDefs defs) = typecheckDef $ defs !! 0
+typecheck (PDefs defs) = trace (show defs) (typecheckDef $ defs !! 0)
 
 typecheckDef :: Def -> Err ()
 typecheckDef (DFun rType (Id name) args statements) =
-  case inferStm statements of
+  case findReturnType $ inferStm statements of
     Ok t -> 
-      if t == rType
+      -- Do not check return type of "main"
+      if ((name == "main") || t == rType)
       then Ok ()
       else Bad $ "wrong return type in " ++ name
     Bad str -> Bad str
 
+findReturnType :: [Err Type] -> Err Type
+findReturnType [] = Ok Type_void
+findReturnType ((Ok r):xs) = Ok r
+findReturnType (_:xs) = findReturnType xs
+
 -- Fetches the first return type from statement list
-inferStm :: [Stm] -> Err Type
-inferStm []                   = Bad "no return found"
-inferStm ((SReturn exp):stms) = inferExp exp
-inferStm (_:stms)             = inferStm stms
+inferStm :: [Stm] -> [Err Type]
+inferStm []                   = [Ok Type_void]
+inferStm (s:stms)             = 
+  case s of
+    SReturn e -> (inferExp e) : inferStm stms
+    SExp    e -> (inferExp e) : inferStm stms
+    s'         -> (Bad $ "statement " ++ (show s') ++ " not matched") : inferStm stms
 
 -- n--
 inferExp :: Exp -> Err Type
@@ -127,6 +138,7 @@ inferExp (EGtWq a b) =
     (Ok Type_int)    -> Ok Type_bool
     (Ok t)           -> Bad $ "can't run < on " ++ (show t)
     e                -> e
+    -- char *n = "hello"
 
 -- a == b
 inferExp (EEq a b) =
