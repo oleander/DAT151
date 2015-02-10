@@ -29,8 +29,14 @@ inferStm :: [Stm] -> [Err Type]
 inferStm []                   = [Ok Type_void]
 inferStm (s:stms)             = 
   case s of
-    SReturn e -> (inferExp e) : inferStm stms
-    SExp    e -> (inferExp e) : inferStm stms
+    SReturn e     -> (inferExp e) : inferStm stms
+    SExp    e     -> (inferExp e) : inferStm stms
+    SWhile  e stm -> 
+      case inferExp e of
+        Ok Type_bool -> inferStm [stm]
+        Ok t         -> [Bad $ "only bool allowed in while not " ++ (show t)]
+        st           -> [st]
+    SBlock stms      -> inferStm stms
     s'         -> (Bad $ "statement " ++ (show s') ++ " not matched") : inferStm stms
 
 -- n--
