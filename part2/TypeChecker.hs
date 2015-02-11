@@ -6,9 +6,23 @@ import ErrM
 import Debug.Trace
 import Environment
 
--- TODO: Check all defs, not just the first one
-typecheck :: Program -> Err ()
-typecheck (PDefs defs) = typecheckDef (defs !! 0) emptyFrame
+typecheck :: Program -> Environment -> Err ()
+typecheck (PDefs defs) g = 
+  case combineEnv defs g of
+    Ok g' -> typecheck' defs g'
+    Bad err -> Bad err
+
+typecheck' :: [Def] -> Environment -> Err ()
+typecheck' (def:defs) g = 
+  case typecheckDef def g of
+    Ok () -> typecheck' defs g
+    Bad err -> Bad err
+
+combineEnv :: [Def] -> Environment -> Err Environment
+combineEnv ((DFun rType name args statements):rest) g =
+  case add name rType g of
+    Ok g' -> combineEnv rest g'
+    Bad err -> Bad err
 
 typecheckDef :: Def -> Environment -> Err ()
 typecheckDef (DFun rType (Id name) args statements) g =
@@ -23,6 +37,7 @@ typecheckDef (DFun rType (Id name) args statements) g =
           else Bad $ "wrong return type in " ++ name
         Bad s -> Bad s
     Bad m -> Bad m
+
 findReturnType :: [Err Type] -> Err Type
 findReturnType [] = Ok Type_void
 findReturnType ((Ok r):xs) = Ok r
