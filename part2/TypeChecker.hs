@@ -8,24 +8,26 @@ import Environment
 
 -- TODO: Check all defs, not just the first one
 typecheck :: Program -> Err ()
-typecheck (PDefs defs) = trace (show defs) (typecheckDef (defs !! 0) emptyFrame)
+typecheck (PDefs defs) = typecheckDef (defs !! 0) emptyFrame
 
 typecheckDef :: Def -> Environment -> Err ()
 typecheckDef (DFun rType (Id name) args statements) g =
-  case findReturnType $ inferStm statements g of
-    Ok t -> 
-      -- Do not check return type of "main"
-      if ((name == "main") || t == rType)
-      then Ok ()
-      else Bad $ "wrong return type in " ++ name
-    Bad str -> Bad str
-
+  -- Add function to environment
+  case add (Id name) rType g of
+    Ok g' ->
+      case findReturnType $ inferStm statements g' of
+        Ok t -> 
+          -- Do not check return type of "main"
+          if ((name == "main") || t == rType)
+          then Ok ()
+          else Bad $ "wrong return type in " ++ name
+        Bad s -> Bad s
+    Bad m -> Bad m
 findReturnType :: [Err Type] -> Err Type
 findReturnType [] = Ok Type_void
 findReturnType ((Ok r):xs) = Ok r
-findReturnType (_:xs) = findReturnType xs
+findReturnType ((Bad x):xs) = Bad x
 
--- Fetches the first return type from statement list
 inferStm :: [Stm] -> Environment -> [Err Type]
 inferStm []                   _ = [Ok Type_void]
 inferStm (s:stms)             g = 
@@ -205,6 +207,7 @@ inferExp EFalse _ = Ok Type_bool
 inferExp (EDouble d) _ = Ok Type_double
 inferExp (EId i)    g = find i g
 
+-- a = b
 inferExp (EAss e1 e2) g 
   | t1 == t2  = t1
   | otherwise = Bad $ "could not match type " ++  show t1 ++ " with " ++ show t2
@@ -212,4 +215,6 @@ inferExp (EAss e1 e2) g
     t1 = inferExp e1 g
     t2 = inferExp e2 g
 
-inferExp e g = error $ show e ++ " is not implemented yet"
+-- myFun(a,b,c)
+-- TODO: Check that a,b,c are accepted by myFun
+inferExp (EApp i exps) g = find i g
