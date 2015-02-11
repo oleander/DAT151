@@ -37,14 +37,26 @@ inferStm (s:stms)             g =
         Ok Type_bool -> inferStm [stm] g
         Ok t         -> [Bad $ "only bool allowed in while not " ++ (show t)]
         st           -> [st]
-    SBlock stms      -> inferStm stms g
+    -- { # block of code }
+    SBlock stms      -> inferStm stms (newFrame g)
+    -- int a = 10;
+    SInit t i e      -> 
+      case add i t g of
+        Ok g' -> 
+          case inferExp e g of -- Check type of e
+            Ok t' ->
+              if t == t'
+              then inferStm stms g' -- Type is okay
+              else [Bad $ "could not assign type " ++ (show t) ++ " to " ++ (show t')]
+            s     -> [s]
+        Bad env    -> [Bad $ "could not update env with type " ++ (show t)]
+    -- if e { s1 } else { s2 }
     SIfElse e s1 s2  ->
       case inferExp e g of
         Ok Type_bool -> (inferStm [s1] g) ++ (inferStm [s2] g)
         Ok t         -> [Bad $ "only bool allowed in if else not " ++ (show t)]
         st           -> [st]
     SDecls t ids     -> undefined
-    s'         -> (Bad $ "statement " ++ (show s') ++ " not matched") : inferStm stms g
 
 -- n--
 inferExp :: Exp -> Environment -> Err Type
