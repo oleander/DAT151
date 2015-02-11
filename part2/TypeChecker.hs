@@ -15,9 +15,17 @@ typecheck (PDefs defs) g =
 typecheck' :: [Def] -> Environment -> Err ()
 typecheck' []          _ = Ok ()
 typecheck' (def:defs) g = 
-  case typecheckDef def g of
+  -- Create a new scope (frame) for function
+  case typecheckDef def (newFrame g) of
     Ok () -> typecheck' defs g
     Bad err -> Bad err
+
+combineArgs :: [Arg] -> Environment -> Err Environment
+combineArgs []                 g = Ok g
+combineArgs ((ADecl t i):args) g = 
+  case add i t g of
+    Ok g' -> combineArgs args g'
+    bad -> bad
 
 combineEnv :: [Def] -> Environment -> Err Environment
 combineEnv [] g = Ok g
@@ -28,13 +36,16 @@ combineEnv ((DFun rType name args statements):rest) g =
 
 typecheckDef :: Def -> Environment -> Err ()
 typecheckDef (DFun rType (Id name) args statements) g =
-  case findReturnType $ inferStm statements g of
-    Ok t -> 
-      -- Do not check return type of "main"
-      if ((name == "main") || t == rType)
-      then Ok ()
-      else Bad $ "wrong return type in " ++ name ++ " can't match " ++ (show t) ++ " with " ++ (show rType)
-    Bad s -> Bad s
+  case combineArgs args g of
+    Ok g' -> 
+      case findReturnType $ inferStm statements g' of
+        Ok t -> 
+          -- Do not check return type of "main"
+          if ((name == "main") || t == rType)
+          then Ok ()
+          else Bad $ "wrong return type in " ++ name ++ " can't match " ++ (show t) ++ " with " ++ (show rType)
+        Bad s -> Bad s
+    Bad err -> Bad err
 
 findReturnType :: [Err Type] -> Err Type
 findReturnType [] = Ok Type_void
