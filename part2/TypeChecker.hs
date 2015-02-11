@@ -46,12 +46,14 @@ combineEnv ((DFun rType name args statements):rest) g =
     Ok g' -> combineEnv rest g'
     Bad err -> Bad err
 
+-- Fetches args list from scope using id, then compares with exps
 compareWithArgs :: Environment -> GlobalFunScope -> Id -> [Exp] -> Err ()
 compareWithArgs g scope i exps = 
   case findA i scope of
     Ok args -> ofSameType args exps g scope
     Bad err     -> Bad err
 
+-- Is the args list of the same type as exps?
 ofSameType :: [Arg] -> [Exp] -> Environment -> GlobalFunScope -> Err ()
 ofSameType [] [] _ _ = Ok ()
 ofSameType [] _ _ _ = Bad "wrong number of arguments"
