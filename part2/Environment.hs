@@ -1,29 +1,43 @@
 module Environment where
 
 import qualified Data.Map as Map
+import ErrM
+import AbsCPP
 
-type Environment id val = [Map.Map id val]
-type Frame id val = Map.Map id val
+type Frame = Map.Map Id Type
+type Environment = [Frame]
 
-newFrame :: Environment id val -> Environment id val
-newFrame e = Map.empty : e
+newFrame :: Environment -> Environment
+newFrame e = emptyFrame ++ e
 
-deleteFrame :: Environment id val -> Environment id val
+deleteFrame :: Environment -> Environment
 deleteFrame = tail
 
-empty :: Environment id val
-empty = [Map.empty]
+emptyFrame :: Environment
+emptyFrame = [Map.empty]
 
-update :: (Ord id) => id -> val -> Environment id val -> Environment id val
+-- FIXME: This should fail with an Err
+update :: Id -> Type -> Environment -> Environment
 update i v (f:e) =
   if Map.member i f
   then Map.insert i v f : e
   else f : update i v e
-update _ _ [] = error "You're a tard"
+update _ _ [] = error "could not update"
+--update i v [] = Bad $ "could not update id " ++ (show i) ++ 
+--  " with type " ++ (show v)
 
-add :: (Ord id) => id -> val -> Environment id val -> Environment id val
+add :: Id -> Type -> Environment -> Err Environment
 add i v (f:e) =
   if Map.member i f
-  then error "UH NUH"
-  else Map.insert i v f : e
-add _ _ [] = error "Still a tard :("
+  then Bad $ show i ++ " already exists"
+  else Ok $ Map.insert i v f : e
+add _ _ [] = Bad "no environment found"
+
+find :: Id -> Environment -> Err Type
+find i []    = Bad $ show i ++ " wasn't found"
+find i (f:e) = 
+  case Map.lookup i f of
+    Just val -> Ok val
+    Nothing -> find i e
+
+
