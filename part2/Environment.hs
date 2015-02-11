@@ -7,6 +7,8 @@ import AbsCPP
 type Frame = Map.Map Id Type
 type Environment = [Frame]
 
+type GlobalFunScope = Map.Map Id [Arg]
+
 newFrame :: Environment -> Environment
 newFrame e = emptyFrame ++ e
 
@@ -15,6 +17,9 @@ deleteFrame = tail
 
 emptyFrame :: Environment
 emptyFrame = [Map.empty]
+
+emptyFunScope :: GlobalFunScope
+emptyFunScope = Map.empty
 
 -- FIXME: This should fail with an Err
 update :: Id -> Type -> Environment -> Environment
@@ -40,4 +45,14 @@ find i (f:e) =
     Just val -> Ok val
     Nothing -> find i e
 
+addA :: Id -> [Arg] -> GlobalFunScope -> Err GlobalFunScope
+addA i args g =
+  if Map.member i g
+  then Bad $ show i ++ " already exists"
+  else Ok $ Map.insert i args g
 
+findA :: Id -> GlobalFunScope -> Err [Arg]
+findA i g = 
+  case Map.lookup i g of
+    Just val -> Ok val
+    Nothing -> Bad $ "could not find args for " ++ (show i)

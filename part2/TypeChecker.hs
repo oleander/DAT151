@@ -8,16 +8,26 @@ import Environment
 typecheck :: Program -> Environment -> Err ()
 typecheck (PDefs defs) g = 
   case combineEnv defs g of
-    Ok g' -> typecheck' defs g'
+    Ok g' -> 
+      case combineDefs defs emptyFunScope of
+        Ok scope -> typecheck' defs g' scope
+        Bad e      -> Bad e
     Bad err -> Bad err
 
+combineDefs :: [Def] -> GlobalFunScope -> Err GlobalFunScope
+combineDefs [] g                          = Ok g
+combineDefs ((DFun _ name args _):defs) g = 
+  case addA name args g of
+    Ok g' -> combineDefs defs g'
+    bad -> bad
+  
 -- TODO: Rename this. Helper function for typecheck
-typecheck' :: [Def] -> Environment -> Err ()
-typecheck' []          _ = Ok ()
-typecheck' (def:defs) g = 
+typecheck' :: [Def] -> Environment -> GlobalFunScope -> Err ()
+typecheck' []          _ _ = Ok ()
+typecheck' (def:defs) g scope = 
   -- Create a new scope (frame) for function
-  case typecheckDef def (newFrame g) of
-    Ok () -> typecheck' defs g
+  case typecheckDef def (newFrame g) scope of
+    Ok () -> typecheck' defs g scope
     Bad err -> Bad err
 
 -- Add args to env
@@ -36,11 +46,29 @@ combineEnv ((DFun rType name args statements):rest) g =
     Ok g' -> combineEnv rest g'
     Bad err -> Bad err
 
-typecheckDef :: Def -> Environment -> Err ()
-typecheckDef (DFun rType (Id name) args statements) g =
+compareWithArgs :: Environment -> GlobalFunScope -> Id -> [Exp] -> Err ()
+compareWithArgs g scope i exps = 
+  case findA i scope of
+    Ok args -> ofSameType args exps g scope
+    Bad err     -> Bad err
+
+ofSameType :: [Arg] -> [Exp] -> Environment -> GlobalFunScope -> Err ()
+ofSameType [] [] _ _ = Ok ()
+ofSameType [] _ _ _ = Bad "wrong number of arguments"
+ofSameType _ [] _ _ = Bad "wrong number of arguments"
+ofSameType ((ADecl t i):args) (exp:exps) g scope = 
+  case inferExp exp g scope of
+    Ok t' -> 
+      if t' == t
+      then ofSameType args exps g scope
+      else Bad "wrong type of arguments"
+    Bad bad -> Bad bad
+
+typecheckDef :: Def -> Environment -> GlobalFunScope -> Err ()
+typecheckDef (DFun rType (Id name) args statements) g scope =
   case combineArgs args g of
     Ok g' -> 
-      case findReturnType $ inferStm statements g' of
+      case findReturnType $ inferStm statements g' scope of
         Ok t -> 
           -- Do not check return type of "main"
           if ((name == "main") || t == rType)
@@ -54,46 +82,46 @@ findReturnType [] = Ok Type_void
 findReturnType ((Ok r):xs) = Ok r
 findReturnType ((Bad x):xs) = Bad x
 
-inferStm :: [Stm] -> Environment -> [Err Type]
-inferStm []                   _ = [Ok Type_void]
-inferStm (s:stms)             g = 
+inferStm :: [Stm] -> Environment -> GlobalFunScope -> [Err Type]
+inferStm []           _ _ = [Ok Type_void]
+inferStm (s:stms) g scope = 
   case s of
     -- return e;
-    SReturn e     -> (inferExp e g) : inferStm stms g
+    SReturn e     -> (inferExp e g scope) : inferStm stms g scope
     -- exp ;
     SExp    e     -> 
-      case inferExp e g of
-        Ok _ -> inferStm stms g
+      case inferExp e g scope of
+        Ok _ -> inferStm stms g scope
         Bad b -> [Bad b]
     -- while(e) { stm }
     SWhile  e stm -> 
-      case inferExp e g of
-        Ok Type_bool -> inferStm [stm] g
+      case inferExp e g scope of
+        Ok Type_bool -> inferStm [stm] g scope
         Ok t         -> [Bad $ "only bool allowed in while not " ++ (show t)]
         st           -> [st]
     -- { # block of code }
-    SBlock stms      -> inferStm stms (newFrame g)
+    SBlock stms      -> inferStm stms (newFrame g) scope
     -- int a = 10;
     SInit t i e      -> 
       case add i t g of
         Ok g' -> 
-          case inferExp e g of -- Check type of e
+          case inferExp e g scope of -- Check type of e
             Ok t' ->
               if t == t'
-              then inferStm stms g' -- Type is okay
+              then inferStm stms g' scope -- Type is okay
               else [Bad $ "could not assign type " ++ (show t) ++ " to " ++ (show t')]
             s     -> [s]
         Bad env    -> [Bad $ "could not update env with type " ++ (show t)]
     -- if e { s1 } else { s2 }
-    SIfElse e s1 s2  ->
-      case inferExp e g of
-        Ok Type_bool -> (inferStm [s1] g) ++ (inferStm [s2] g)
+    SIfElse e s1 s2 ->
+      case inferExp e g scope of
+        Ok Type_bool -> (inferStm [s1] g scope) ++ (inferStm [s2] g scope)
         Ok t         -> [Bad $ "only bool allowed in if else not " ++ (show t)]
         st           -> [st]
     -- int a,b,c;
     SDecls t ids     ->
       case combineDec t ids g of
-        Ok g' -> inferStm stms g'
+        Ok g' -> inferStm stms g' scope
         Bad err -> [Bad err]
 
 -- Add a list of args to to gamma
@@ -103,63 +131,63 @@ combineDec t (i:ids) g =
   case add i t g of
     Ok g' -> combineDec t ids g'
     bad -> bad
-    
+
 -- n--
-inferExp :: Exp -> Environment -> Err Type
-inferExp (EPDecr exp) g =
-  case inferExp exp g of
+inferExp :: Exp -> Environment -> GlobalFunScope -> Err Type
+inferExp (EPDecr exp) g scope =
+  case inferExp exp g scope of
     (Ok Type_int)    -> Ok Type_int
     (Ok Type_double) -> Ok Type_double
     _      -> Bad "wrong type"
 
 -- n++
-inferExp (EPIncr exp) g =
-  case inferExp exp g of
+inferExp (EPIncr exp) g scope =
+  case inferExp exp g scope of
     (Ok Type_int)    -> Ok Type_int
     (Ok Type_double) -> Ok Type_double
     _      -> Bad "wrong type"
 
 -- ++n
-inferExp (EIncr exp) g =
-  case inferExp exp g of
+inferExp (EIncr exp) g scope =
+  case inferExp exp g scope of
     (Ok Type_int)    -> Ok Type_int
     (Ok Type_double) -> Ok Type_double
     _      -> Bad "wrong type"
 
 -- --n
-inferExp (EDecr exp) g =
-  case inferExp exp g of
+inferExp (EDecr exp) g scope =
+  case inferExp exp g scope of
     (Ok Type_int)    -> Ok Type_int
     (Ok Type_double) -> Ok Type_double
     _      -> Bad "wrong type"
 
 -- a * b
-inferExp (ETimes a b) g =
-  case inferExp a g of
+inferExp (ETimes a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_double
-    (Ok Type_int)    -> inferExp b g
+    (Ok Type_int)    -> inferExp b g scope
     (Ok t)           -> Bad $ "can't run times on " ++ (show t)
     e                -> e
 
 -- a / b
-inferExp (EDiv a b) g =
-  case inferExp a g of
+inferExp (EDiv a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_double
-    (Ok Type_int)    -> inferExp b g
+    (Ok Type_int)    -> inferExp b g scope
     (Ok t)           -> Bad $ "can't run div on " ++ (show t)
     e                -> e
 
 -- a + b
-inferExp (EPlus a b) g =
-  case inferExp a g of
+inferExp (EPlus a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> 
-      case inferExp b g of
+      case inferExp b g scope of
         -- (Ok Type_string) -> Bad "can't run + on double and string"
         (Ok Type_double) -> Ok Type_double
         (Ok Type_int)    -> Ok Type_double
         (Ok t)           -> Bad $ "can't run + on double and " ++ (show t)
     (Ok Type_int)    -> 
-      case inferExp b g of
+      case inferExp b g scope of
         -- (Ok Type_string) -> Bad "can't run + on int and string"
         (Ok Type_double) -> Ok Type_double
         (Ok Type_int)    -> Ok Type_int
@@ -171,40 +199,40 @@ inferExp (EPlus a b) g =
     (Ok t)           -> Bad $ "can't run plus on " ++ (show t)
 
 -- a - b
-inferExp (EMinus a b) g =
-  case inferExp a g of
+inferExp (EMinus a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_double
-    (Ok Type_int)    -> inferExp b g
+    (Ok Type_int)    -> inferExp b g scope
     (Ok t)           -> Bad $ "can't run minus on " ++ (show t)
     e                -> e
 
 -- a < b
-inferExp (ELt a b) g =
-  case inferExp a g of
+inferExp (ELt a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_bool
     (Ok Type_int)    -> Ok Type_bool
     (Ok t)           -> Bad $ "can't run < on " ++ (show t)
     e                -> e
 
 -- a > b
-inferExp (EGt a b) g =
-  case inferExp a g of
+inferExp (EGt a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_bool
     (Ok Type_int)    -> Ok Type_bool
     (Ok t)           -> Bad $ "can't run < on " ++ (show t)
     e                -> e
 
 -- a <= b
-inferExp (ELtEq a b) g =
-  case inferExp a g of
+inferExp (ELtEq a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_bool
     (Ok Type_int)    -> Ok Type_bool
     (Ok t)           -> Bad $ "can't run < on " ++ (show t)
     e                -> e
 
 -- a >= b
-inferExp (EGtWq a b) g =
-  case inferExp a g of
+inferExp (EGtWq a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_bool
     (Ok Type_int)    -> Ok Type_bool
     (Ok t)           -> Bad $ "can't run < on " ++ (show t)
@@ -212,8 +240,8 @@ inferExp (EGtWq a b) g =
     -- char *n = "hello"
 
 -- a == b
-inferExp (EEq a b) g =
-  case inferExp a g of
+inferExp (EEq a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_bool
     (Ok Type_int)    -> Ok Type_bool
     -- (Ok Type_string) -> Ok Type_bool
@@ -221,8 +249,8 @@ inferExp (EEq a b) g =
     e                -> e
 
 -- a != b
-inferExp (ENEq a b) g =
-  case inferExp a g of
+inferExp (ENEq a b) g scope =
+  case inferExp a g scope of
     (Ok Type_double) -> Ok Type_bool
     (Ok Type_int)    -> Ok Type_bool
     -- (Ok Type_string) -> Ok Type_bool
@@ -230,35 +258,37 @@ inferExp (ENEq a b) g =
     e                -> e
 
 -- a && b
-inferExp (EAnd a b) g =
-  case ((inferExp a g), (inferExp b g)) of
+inferExp (EAnd a b) g scope =
+  case ((inferExp a g scope), (inferExp b g scope)) of
     ((Ok Type_bool), (Ok Type_bool)) -> Ok Type_bool
-    e                                 -> Bad "can't run && on non bools"
+    e                                -> Bad "can't run && on non bools"
 
 -- a || b
-inferExp (EOr a b) g =
-  case ((inferExp a g), (inferExp b g)) of
+inferExp (EOr a b) g scope =
+  case ((inferExp a g scope), (inferExp b g scope)) of
     ((Ok Type_bool), (Ok Type_bool)) -> Ok Type_bool
     e                                -> Bad "can't run || on non bools"
 
 -- Regular int
-inferExp (EInt i) _ = Ok Type_int
+inferExp (EInt i) _ _ = Ok Type_int
 
 -- Bools
-inferExp ETrue  _ = Ok Type_bool
-inferExp EFalse _ = Ok Type_bool
+inferExp ETrue  _ _ = Ok Type_bool
+inferExp EFalse _ _ = Ok Type_bool
 
-inferExp (EDouble d) _ = Ok Type_double
-inferExp (EId i)    g = find i g
+inferExp (EDouble d) _ _ = Ok Type_double
+inferExp (EId i)    g _ = find i g
 
 -- a = b
-inferExp (EAss e1 e2) g 
+inferExp (EAss e1 e2) g scope 
   | t1 == t2  = t1
   | otherwise = Bad $ "could not match type " ++  show t1 ++ " with " ++ show t2
   where
-    t1 = inferExp e1 g
-    t2 = inferExp e2 g
+    t1 = inferExp e1 g scope
+    t2 = inferExp e2 g scope
 
 -- myFun(a,b,c)
--- TODO: Check that a,b,c are accepted by myFun
-inferExp (EApp i exps) g = find i g
+inferExp (EApp i exps) g scope = 
+  case compareWithArgs g scope i exps of
+    Ok () -> find i g
+    Bad bad -> Bad bad
