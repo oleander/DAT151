@@ -13,6 +13,7 @@ typecheck (PDefs defs) g =
     Bad err -> Bad err
 
 typecheck' :: [Def] -> Environment -> Err ()
+typecheck' []          _ = Ok ()
 typecheck' (def:defs) g = 
   case typecheckDef def g of
     Ok () -> typecheck' defs g
@@ -27,17 +28,13 @@ combineEnv ((DFun rType name args statements):rest) g =
 
 typecheckDef :: Def -> Environment -> Err ()
 typecheckDef (DFun rType (Id name) args statements) g =
-  -- Add function to environment
-  case add (Id name) rType g of
-    Ok g' ->
-      case findReturnType $ inferStm statements g' of
-        Ok t -> 
-          -- Do not check return type of "main"
-          if ((name == "main") || t == rType)
-          then Ok ()
-          else Bad $ "wrong return type in " ++ name
-        Bad s -> Bad s
-    Bad m -> Bad m
+  case findReturnType $ inferStm statements g of
+    Ok t -> 
+      -- Do not check return type of "main"
+      if ((name == "main") || t == rType)
+      then Ok ()
+      else Bad $ "wrong return type in " ++ name ++ " can't match " ++ (show t) ++ " with " ++ (show rType)
+    Bad s -> Bad s
 
 findReturnType :: [Err Type] -> Err Type
 findReturnType [] = Ok Type_void
@@ -49,7 +46,10 @@ inferStm []                   _ = [Ok Type_void]
 inferStm (s:stms)             g = 
   case s of
     SReturn e     -> (inferExp e g) : inferStm stms g
-    SExp    e     -> (inferExp e g) : inferStm stms g
+    SExp    e     -> 
+      case inferExp e g of
+        Ok _ -> inferStm stms g
+        Bad b -> [Bad b]
     SWhile  e stm -> 
       case inferExp e g of
         Ok Type_bool -> inferStm [stm] g
