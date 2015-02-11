@@ -3,7 +3,6 @@ module TypeChecker where
 import AbsCPP
 import PrintCPP
 import ErrM
-import Debug.Trace
 import Environment
 
 typecheck :: Program -> Environment -> Err ()
@@ -12,6 +11,7 @@ typecheck (PDefs defs) g =
     Ok g' -> typecheck' defs g'
     Bad err -> Bad err
 
+-- TODO: Rename this. Helper function for typecheck
 typecheck' :: [Def] -> Environment -> Err ()
 typecheck' []          _ = Ok ()
 typecheck' (def:defs) g = 
@@ -20,6 +20,7 @@ typecheck' (def:defs) g =
     Ok () -> typecheck' defs g
     Bad err -> Bad err
 
+-- Add args to env
 combineArgs :: [Arg] -> Environment -> Err Environment
 combineArgs []                 g = Ok g
 combineArgs ((ADecl t i):args) g = 
@@ -27,6 +28,7 @@ combineArgs ((ADecl t i):args) g =
     Ok g' -> combineArgs args g'
     bad -> bad
 
+-- Add function return type to env
 combineEnv :: [Def] -> Environment -> Err Environment
 combineEnv [] g = Ok g
 combineEnv ((DFun rType name args statements):rest) g =
@@ -56,11 +58,14 @@ inferStm :: [Stm] -> Environment -> [Err Type]
 inferStm []                   _ = [Ok Type_void]
 inferStm (s:stms)             g = 
   case s of
+    -- return e;
     SReturn e     -> (inferExp e g) : inferStm stms g
+    -- exp ;
     SExp    e     -> 
       case inferExp e g of
         Ok _ -> inferStm stms g
         Bad b -> [Bad b]
+    -- while(e) { stm }
     SWhile  e stm -> 
       case inferExp e g of
         Ok Type_bool -> inferStm [stm] g
@@ -85,8 +90,20 @@ inferStm (s:stms)             g =
         Ok Type_bool -> (inferStm [s1] g) ++ (inferStm [s2] g)
         Ok t         -> [Bad $ "only bool allowed in if else not " ++ (show t)]
         st           -> [st]
-    SDecls t ids     -> undefined
+    -- int a,b,c;
+    SDecls t ids     ->
+      case combineDec t ids g of
+        Ok g' -> inferStm stms g'
+        Bad err -> [Bad err]
 
+-- Add a list of args to to gamma
+combineDec :: Type -> [Id] -> Environment -> Err Environment
+combineDec _ [] g = Ok g
+combineDec t (i:ids) g = 
+  case add i t g of
+    Ok g' -> combineDec t ids g'
+    bad -> bad
+    
 -- n--
 inferExp :: Exp -> Environment -> Err Type
 inferExp (EPDecr exp) g =
