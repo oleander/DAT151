@@ -19,6 +19,7 @@ typecheck' (def:defs) g =
     Bad err -> Bad err
 
 combineEnv :: [Def] -> Environment -> Err Environment
+combineEnv [] g = Ok g
 combineEnv ((DFun rType name args statements):rest) g =
   case add name rType g of
     Ok g' -> combineEnv rest g'
