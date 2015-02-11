@@ -205,4 +205,11 @@ inferExp EFalse _ = Ok Type_bool
 inferExp (EDouble d) _ = Ok Type_double
 inferExp (EId i)    g = find i g
 
+inferExp (EAss e1 e2) g 
+  | t1 == t2  = t1
+  | otherwise = Bad $ "could not match type " ++  show t1 ++ " with " ++ show t2
+  where
+    t1 = inferExp e1 g
+    t2 = inferExp e2 g
+
 inferExp e g = error $ show e ++ " is not implemented yet"
