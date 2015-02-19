@@ -22,7 +22,7 @@ ETrue.   Exp15  ::= "true" ;
 EFalse.  Exp15  ::= "false" ;
 EInt.    Exp15  ::= Integer ;
 EDouble. Exp15  ::= Double ;
-EId.     Exp15  ::= Id ; 
+EId.     Exp15  ::= Id ;
 
 EApp.    Exp15  ::= Id "(" [Exp] ")" ;
 
@@ -59,4 +59,3 @@ separator nonempty Id "," ;
 comment "#" ;
 comment "//" ;
 comment "/*" "*/" ;
-

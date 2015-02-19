@@ -8,19 +8,19 @@ import ErrM
 
 import TypeChecker
 import Interpreter
-import Environment
 
 -- driver
 
-check :: String -> IO () 
+check :: String -> IO ()
 check s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
-                           exitFailure 
-            Ok  tree -> case typecheck tree emptyFrame of
-                          Bad err -> do putStrLn "TYPE ERROR"
-                                        putStrLn err
-                                        exitFailure 
+                           exitFailure
+            Ok  tree -> case typecheck tree of
+                          Bad err -> do
+                            putStrLn "TYPE ERROR"
+                            putStrLn err
+                            exitFailure
                           Ok _ -> interpret tree
 
 main :: IO ()

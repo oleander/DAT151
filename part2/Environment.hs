@@ -3,56 +3,51 @@ module Environment where
 import qualified Data.Map as Map
 import ErrM
 import AbsCPP
+import Data.List (nub)
 
-type Frame = Map.Map Id Type
-type Environment = [Frame]
+type Frame k v = Map.Map k v
+type Environment k v = [Frame k v]
 
-type GlobalFunScope = Map.Map Id [Arg]
+newEnv :: (Ord k, Show k) => [(k, v)] -> Err (Environment k v)
+newEnv kvs = addFrame [] kvs
 
-newFrame :: Environment -> Environment
-newFrame e = emptyFrame ++ e
+newFrame :: Environment k v -> Environment k v
+newFrame e = Map.empty : e
 
-deleteFrame :: Environment -> Environment
+-- TODO error when duplicate keys
+addFrame :: (Ord k, Show k) =>
+            Environment k v -> [(k, v)] -> Err (Environment k v)
+addFrame env kvs = do
+  if (map fst kvs) == (nub $ map fst kvs)
+    then return $ Map.fromList kvs : env
+    else fail "Already declared in this scope"
+
+deleteFrame :: Environment k v -> Environment k v
 deleteFrame = tail
 
-emptyFrame :: Environment
-emptyFrame = [Map.empty]
+emptyEnv :: Environment k v
+emptyEnv = [Map.empty]
 
-emptyFunScope :: GlobalFunScope
-emptyFunScope = Map.empty
-
--- FIXME: This should fail with an Err
-update :: Id -> Type -> Environment -> Environment
-update i v (f:e) =
-  if Map.member i f
-  then Map.insert i v f : e
-  else f : update i v e
-update _ _ [] = error "could not update"
---update i v [] = Bad $ "could not update id " ++ (show i) ++ 
+-- -- FIXME: This should fail with an Err
+-- update :: (Ord k) => k -> v -> Environment k v -> Environment k v
+-- update i v (f:e) =
+--   if Map.member i f
+--   then Map.insert i v f : e
+--   else f : update i v e
+-- update _ _ [] = error "could not update"
+--update i v [] = Bad $ "could not update id " ++ (show i) ++
 --  " with type " ++ (show v)
 
-add :: Id -> Type -> Environment -> Err Environment
+add :: (Ord k, Show k) => k -> v -> Environment k v -> Err (Environment k v)
 add i v (f:e) =
   if Map.member i f
-  then Bad $ show i ++ " already exists"
-  else Ok $ Map.insert i v f : e
-add _ _ [] = Bad "no environment found"
+  then fail $ show i ++ " already declared"
+  else return $ Map.insert i v f : e
+add _ _ [] = fail "no environment found"
 
-find :: Id -> Environment -> Err Type
-find i []    = Bad $ show i ++ " wasn't found"
-find i (f:e) = 
+find :: (Ord k, Show k) => k -> Environment k v -> Err v
+find i []    = fail $ show i ++ " wasn't found"
+find i (f:e) =
   case Map.lookup i f of
-    Just val -> Ok val
+    Just val -> return val
     Nothing -> find i e
-
-addA :: Id -> [Arg] -> GlobalFunScope -> Err GlobalFunScope
-addA i args g =
-  if Map.member i g
-  then Bad $ show i ++ " already exists"
-  else Ok $ Map.insert i args g
-
-findA :: Id -> GlobalFunScope -> Err [Arg]
-findA i g = 
-  case Map.lookup i g of
-    Just val -> Ok val
-    Nothing -> Bad $ "could not find args for " ++ (show i)
