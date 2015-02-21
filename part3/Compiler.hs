@@ -87,6 +87,59 @@ extendFun (DFun t i args _) env@Env{ functionScope = functionScope } =
 compile :: Program -> IO ()
 compile program = undefined
 
+compileStms :: [Stm] -> Env -> IO ()
+compileStms (stm:stms) env =
+  case stm of
+    (SDecls t ids) -> do
+      compileStms stms env'
+      where env' = foldr extend env ids
+    (SInit t i exp) -> do
+      compileExp exp env
+      emit "dup"
+      emit $ "istore " ++ show i'
+      compileStms stms env
+      where i' = lookupAddr i env
+    (SExp exp) -> do
+      compileExp exp env
+      emit "pop"
+      compileStms stms env
+    (SBlock s) -> do
+      compileStms s (newBlock env)
+      compileStms stms (removeBlock env)
+    (SIfElse exp s1 s2) -> do
+      compileExp exp env''
+      emit $ "ifeq " ++ false
+      compileStms [s1] env''
+      emit $ "goto " ++ true
+      emit $ false ++ ":"
+      compileStms [s2] env''
+      emit $ true ++ ":"
+      compileStms stms env''
+      where
+        (true, env') = newLabel env
+        (false, env'') = newLabel env'
+    (SWhile exp stm) -> do
+      emit $ test ++ ":"
+      compileExp exp env''
+      emit $ "ifeq " ++ end
+      compileStms [stm] env''
+      emit $ "goto " ++ test
+      emit $ end ++ ":"
+      compileStms stms env''
+      where
+        (test, env') = newLabel env
+        (end, env'') = newLabel env'
+
+compileDef :: Def -> Env -> IO ()
+compileDef = undefined
+
+-- cB e true false
+--cB :: Exp -> String -> String -> IO
+--cB exp l1 l2 = do
+--  compileExp exp
+--  emit "ifeq " ++ l1
+--  emit "ifeq " ++ l1
+
 compileExp :: Exp -> Env -> IO ()
 compileExp (EInt i) env = emit $ "ldc " ++ show i
 compileExp (EPlus a b) env = do
@@ -99,45 +152,15 @@ compileExp (EDiv a b) env = do
   emit "idiv"
 compileExp (EId i) env = emit $ "iload " ++ show i'
   where i' = lookupAddr i env
-
-compileStms :: [Stm] -> Env -> IO ()
-compileStms (stm:stms) env =
-  case stm of
-    (SDecls t ids) -> compileStms stms env'
-      where env' = foldr extend env ids
-    (SInit t i exp) -> do
-      compileExp exp env
-      emit "dup"
-      emit $ "istore " ++ show i'
-      where i' = lookupAddr i env
-    (SExp exp) -> do
-      compileExp exp env
-      emit "pop"
-    (SBlock s) -> do
-      compileStms s (newBlock env)
-      compileStms stms (removeBlock env)
-    (SIfElse exp s1 s2) -> do
-      compileExp exp env''
-      emit $ "ifeq " ++ elsee
-      compileStms [s1] env''
-      emit $ "goto " ++ done
-      emit $ elsee ++ ":"
-      compileStms [s2] env''
-      emit $ done ++ ":"
-      where
-        (done, env') = newLabel env
-        (elsee, env'') = newLabel env'
-
-compileDef :: Def -> Env -> IO ()
-compileDef = undefined
-
--- cB e true false
---cB :: Exp -> String -> String -> IO
---cB exp l1 l2 = do
---  compileExp exp
---  emit "ifeq " ++ l1
---  emit "ifeq " ++ l1
-
-
+compileExp (ELt e1 e2) env = do
+  emit "bitpush 1"
+  compileExp e1 env'
+  compileExp e2 env'
+  emit $ "if_icmplt " ++ true
+  emit "pop"
+  emit "bitpush 0"
+  emit $ true ++ ":"
+  where (true, env') = newLabel env
+  
 emit :: Show a => a -> IO()
 emit = print
