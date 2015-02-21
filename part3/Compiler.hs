@@ -8,6 +8,7 @@ import Control.Monad
 import qualified Data.Map as Map
 import Data.IORef
 import Data.Maybe
+import Control.Monad.IO.Class
 
 import Data.List (nub)
 
@@ -103,7 +104,7 @@ compileStms :: [Stm] -> Env -> IO ()
 compileStms (stm:stms) env =
   case stm of
     (SDecls t ids) -> compileStms stms env'
-      where env' = foldr (\i env -> extend i env) env ids
+      where env' = foldr extend env ids
     (SInit t i exp) -> do
       compileExp exp env
       emit "dup"
@@ -112,9 +113,31 @@ compileStms (stm:stms) env =
     (SExp exp) -> do
       compileExp exp env
       emit "pop"
+    (SBlock s) -> do
+      compileStms s (newBlock env)
+      compileStms stms (removeBlock env)
+    (SIfElse exp s1 s2) -> do
+      compileExp exp env''
+      emit $ "ifeq " ++ elsee
+      compileStms [s1] env''
+      emit $ "goto " ++ done
+      emit $ elsee ++ ":"
+      compileStms [s2] env''
+      emit $ done ++ ":"
+      where
+        (done, env') = newLabel env
+        (elsee, env'') = newLabel env'
 
 compileDef :: Def -> Env -> IO ()
 compileDef = undefined
+
+-- cB e true false
+--cB :: Exp -> String -> String -> IO
+--cB exp l1 l2 = do
+--  compileExp exp
+--  emit "ifeq " ++ l1
+--  emit "ifeq " ++ l1
+
 
 emit :: Show a => a -> IO()
 emit = print
