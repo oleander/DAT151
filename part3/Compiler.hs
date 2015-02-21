@@ -18,6 +18,7 @@ type Scope = [Block]
 type Fun = (Type, [Arg])
 type FunScope = Map.Map Id Fun
 type Operator = String
+type Counter = Int -> IO Int
 data Env = Env { 
   labelCounter :: Integer,
   scope :: Scope,
@@ -26,25 +27,11 @@ data Env = Env {
   counter :: IO Counter
 }
 
-type Counter = Int -> IO Int
-
 makeCounter :: IO Counter
 makeCounter = do
     r <- newIORef 0
     return (\i -> do modifyIORef r (+i)
                      readIORef r)
-
---testCounter :: Counter -> IO ()
---testCounter counter = do
---    b <- counter 1
---    c <- counter 1
---    d <- counter 1
---    print [b,c,d]
-
---main = do
---    counter <- makeCounter
---    testCounter counter
---    testCounter counter
 
 emptyScope :: Scope
 emptyScope = [Map.empty]
@@ -109,9 +96,19 @@ extendFun (DFun t i args _) env@Env{ functionScope = functionScope } =
     functionScope' = Map.insert i (t, args) functionScope
 
 compile :: Program -> IO ()
-compile program = undefined
+compile (PDefs defs) = do
+  emit ".class public C"
+  emit ".super java/lang/Object"
+  emit ".method public <init>()V"
+  emit "aload_0"
+  emit "invokenonvirtual java/lang/Object/&lt;init>()V"
+  emit "return"
+  emit ".end method"
+  mapM_ (\def -> compileDef def env) defs
+  where env = foldr extendFun emptyEnv defs
 
 compileStms :: [Stm] -> Env -> IO ()
+compileStms [] _           = return ()
 compileStms (stm:stms) env =
   case stm of
     (SDecls t ids) -> do
@@ -151,16 +148,20 @@ compileStms (stm:stms) env =
       emit $ "goto " ++ test
       emit $ end ++ ":"
       compileStms stms env
+    (SReturn exp) -> do
+      compileExp exp env
+      emit "ireturn"
 
 compileDef :: Def -> Env -> IO ()
-compileDef = undefined
-
--- cB e true false
---cB :: Exp -> String -> String -> IO
---cB exp l1 l2 = do
---  compileExp exp
---  emit "ifeq " ++ l1
---  emit "ifeq " ++ l1
+compileDef (DFun t (Id i) args stms) env = do
+  emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
+  emit ".limit locals 1000" -- TODO: Calculate this
+  emit ".limit stack 1000" -- TODO: Calculate this
+  compileStms stms env'
+  emit ".end method"
+  where 
+    args' = compressArgs args
+    env' = foldr (\(ADecl _ id) env -> extend id env) env args
 
 compileExp :: Exp -> Env -> IO ()
 compileExp (EInt i) env = emit $ "ldc " ++ show i
@@ -174,13 +175,53 @@ compileExp (EDiv a b) env = do
   emit "idiv"
 compileExp (EId i) env = emit $ "iload " ++ show i'
   where i' = lookupAddr i env
+compileExp (EApp (Id i) exps) env = do
+  mapM_ (\exp -> compileExp exp env) exps
+  emit $ "invokestatic C/" ++ i ++ "(" ++ args' ++ ")" ++ (mapType rType)
+  where 
+    args' = compressArgs args
+    (rType, args) = lookupFun (Id i) env
+-- FIXME: Should update pointer
+compileExp (EPIncr exp) env = do
+  compileExp exp env
+  emit "bipush"
+  emit "addi"
+compileExp (EDouble exp) env = error "not defined for doubles"
+compileExp (EOr e1 e2) env = do
+  emit "not implemented"
+compileExp (EAnd e1 e2) env = do
+  emit "not implemented"
+compileExp (EMinus e1 e2) env = do
+  emit "not implemented"
+compileExp (ETimes e1 e2) env = do
+  emit "not implemented"
+compileExp (EDecr exp) env = do
+  emit "not implemented"
+compileExp (EIncr exp) env = do
+  emit "not implemented"
+compileExp ETrue env = do
+  emit "not implemented"
+compileExp EFalse env = do
+  emit "not implemented"
 compileExp (ELtEq e1 e2) env = compareExp "if_icmple" e1 e2 env
 compileExp (ELt e1 e2) env = compareExp "if_icmplt" e1 e2 env
 compileExp (EGtWq e1 e2) env = compareExp "if_icmpge" e1 e2 env
 compileExp (EGt e1 e2) env = compareExp "if_icmpgt" e1 e2 env
 compileExp (ENEq e1 e2) env = compareExp "if_icmpne" e1 e2 env
 compileExp (EEq e1 e2) env = compareExp "if_icmpeq" e1 e2 env
-  
+
+-- int a, int b => II
+-- bool a, int b => ZI
+compressArgs :: [Arg] -> String
+compressArgs [] = ""
+compressArgs ((ADecl t _):args) = (mapType t) ++ compressArgs args
+
+mapType :: Type -> String
+mapType Type_bool = "Z"
+mapType Type_int = "I"
+mapType Type_void = "V"
+mapType t = error $ "not defined for " ++ show t
+
 compareExp :: Operator -> Exp -> Exp -> Env -> IO ()
 compareExp operator e1 e2 env = do
   true <- newLabel env
