@@ -104,22 +104,26 @@ compileExp (EId i) env =
 --  compileExp b
 --  compileExp a
 
-compileStm :: Stm -> Env -> IO ()
-compileStm (SInit t i exp) env = do
-  compileExp exp env
-  emit "dup"
-  case lookupAddr i env of
-    Ok i -> emit $ "istore " ++ show i
-    Bad e -> error e
--- TODO: Check for type void
-compileStm (SExp exp) env = do
-  compileExp exp env
-  emit "pop"
-compileStm (SDecls _ []) env      = return ()
-compileStm (SDecls t (i:ids)) env = do
-  case extend i env of
-    Ok env' -> compileStm (SDecls t ids) env'
-    Bad e -> error e
+compileStms :: [Stm] -> Env -> IO ()
+compileStms (stm:stms) env =
+  case stm of
+    (SDecls t ids) ->
+      case foldr applyIf (Ok env) ids of
+        Ok env' -> compileStms stms env'
+        Bad e -> error e
+    (SInit t i exp) -> do
+      compileExp exp env
+      emit "dup"
+      case lookupAddr i env of
+        Ok i -> emit $ "istore " ++ show i
+        Bad e -> error e
+    (SExp exp) -> do
+      compileExp exp env
+      emit "pop"
+
+applyIf :: Id -> Err Env -> Err Env
+applyIf i (Ok env) = extend i env
+applyIf i (Bad e) = error e
 
 compileDef :: Def -> Env -> IO ()
 compileDef = undefined
