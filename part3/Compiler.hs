@@ -37,20 +37,20 @@ removeBlock :: Env -> Env
 removeBlock env@Env { scope = scope } = 
   env { scope = tail scope }
 
-lookupAddr :: Id -> Env -> Err Integer
+lookupAddr :: Id -> Env -> Integer
 lookupAddr (Id i) env@Env{ scope = scope' } =
   case scope' of
-    []    -> fail $ show i ++ " wasn't found"
+    []    -> error $ show i ++ " wasn't found"
     (f:e) ->
       case Map.lookup i f of
-        Just val -> return val
+        Just val -> val
         Nothing -> lookupAddr (Id i) env { scope = e }
 
-lookupFun :: Id -> Env -> Err Fun
+lookupFun :: Id -> Env -> Fun
 lookupFun i env@Env { functionScope = scope } =
   case Map.lookup i scope of
-    Just val -> return val
-    Nothing -> fail $ show i ++ " not found"
+    Just val -> val
+    Nothing -> error $ show i ++ " not found"
 
 emptyEnv :: Env
 emptyEnv = Env {
@@ -66,20 +66,20 @@ newLabel env@Env{ labelCounter = l } = (label, env')
     label = "Label" ++ show l
     env'  = env { labelCounter = l + 1 }
 
-extend :: Id -> Env -> Err Env
+extend :: Id -> Env -> Env
 extend (Id i) env@Env{ addrCounter = counter, scope = (block:s) } = 
   if Map.member i block
-  then fail $ show i ++ " already declared"
+  then error $ show i ++ " already declared"
   -- Always increment counter by one as we don't need doubles
-  else return $ env { addrCounter = counter + 1, scope = scope' }
+  else env { addrCounter = counter + 1, scope = scope' }
   where
     scope' = Map.insert i counter block : s
 
-extendFun :: Def -> Env -> Err Env
+extendFun :: Def -> Env -> Env
 extendFun (DFun t i args _) env@Env{ functionScope = functionScope } = 
   if Map.member i functionScope
-  then fail $ show i ++ " already declared"
-  else return $ env { functionScope = functionScope' }
+  then error $ show i ++ " already declared"
+  else env { functionScope = functionScope' }
   where
     functionScope' = Map.insert i (t, args) functionScope
 
@@ -96,34 +96,22 @@ compileExp (EDiv a b) env = do
   compileExp a env
   compileExp b env
   emit "idiv"
-compileExp (EId i) env = 
-  case lookupAddr i env of
-    Ok i -> emit $ "iload " ++ show i
-    Bad e -> error e
---compileExp (EAss a b) env do
---  compileExp b
---  compileExp a
+compileExp (EId i) env = emit $ "iload " ++ show i'
+  where i' = lookupAddr i env
 
 compileStms :: [Stm] -> Env -> IO ()
 compileStms (stm:stms) env =
   case stm of
-    (SDecls t ids) ->
-      case foldr applyIf (Ok env) ids of
-        Ok env' -> compileStms stms env'
-        Bad e -> error e
+    (SDecls t ids) -> compileStms stms env'
+      where env' = foldr (\i env -> extend i env) env ids
     (SInit t i exp) -> do
       compileExp exp env
       emit "dup"
-      case lookupAddr i env of
-        Ok i -> emit $ "istore " ++ show i
-        Bad e -> error e
+      emit $ "istore " ++ show i'
+      where i' = lookupAddr i env
     (SExp exp) -> do
       compileExp exp env
       emit "pop"
-
-applyIf :: Id -> Err Env -> Err Env
-applyIf i (Ok env) = extend i env
-applyIf i (Bad e) = error e
 
 compileDef :: Def -> Env -> IO ()
 compileDef = undefined
