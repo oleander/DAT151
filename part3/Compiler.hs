@@ -154,14 +154,16 @@ compileStms (stm:stms) env =
 
 compileDef :: Def -> Env -> IO ()
 compileDef (DFun t (Id i) args stms) env = do
-  emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
+  case i of
+    "main" -> emit $ ".method public static main([Ljava/lang/String;)V"
+    i      -> emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
   emit ".limit locals 1000" -- TODO: Calculate this
   emit ".limit stack 1000" -- TODO: Calculate this
   compileStms stms env'
   emit ".end method"
   where 
     args' = compressArgs args
-    env' = foldr (\(ADecl _ id) env -> extend id env) env args
+    env' = foldl (\(ADecl _ id) env -> extend id env) env args
 compileExp :: Exp -> Env -> IO ()
 compileExp (EInt i) env = emit $ "ldc " ++ show i
 compileExp (EPlus a b) env = do
