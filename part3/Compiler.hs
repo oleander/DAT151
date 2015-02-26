@@ -128,15 +128,15 @@ compileStms (stm:stms) env =
       compileStms s (newBlock env)
       compileStms stms (removeBlock env)
     (SIfElse exp s1 s2) -> do
-      true <- newLabel env
+      done <- newLabel env
       false <- newLabel env
       compileExp exp env
       emit $ "ifeq " ++ false
       compileStms [s1] env
-      emit $ "goto " ++ true
+      emit $ "goto " ++ done
       emit $ false ++ ":"
       compileStms [s2] env
-      emit $ true ++ ":"
+      emit $ done ++ ":"
       compileStms stms env
     (SWhile exp stm) -> do
       test <- newLabel env
@@ -154,15 +154,16 @@ compileStms (stm:stms) env =
 
 compileDef :: Def -> Env -> IO ()
 compileDef (DFun t (Id i) args stms) env = do
-  emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
+  case i of
+    "main" -> emit $ ".method public static main([Ljava/lang/String;)V"
+    i      -> emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
   emit ".limit locals 1000" -- TODO: Calculate this
   emit ".limit stack 1000" -- TODO: Calculate this
   compileStms stms env'
   emit ".end method"
   where 
     args' = compressArgs args
-    env' = foldr (\(ADecl _ id) env -> extend id env) env args
-
+    env' = foldl (\(ADecl _ id) env -> extend id env) env args
 compileExp :: Exp -> Env -> IO ()
 compileExp (EInt i) env = emit $ "ldc " ++ show i
 compileExp (EPlus a b) env = do
@@ -181,28 +182,72 @@ compileExp (EApp (Id i) exps) env = do
   where 
     args' = compressArgs args
     (rType, args) = lookupFun (Id i) env
--- FIXME: Should update pointer
-compileExp (EPIncr exp) env = do
-  compileExp exp env
-  emit "bipush"
+compileExp (EPIncr (EId i)) env = do
+  compileExp (EId i) env
+  emit "bipush 1"
   emit "addi"
+  emit "istore " ++ i'
+  compileExp (EId i) env -- Return n, not n + 1
+  where i' = lookupAddr i env
+compileExp (EPDecr (EId i)) env = do
+  compileExp (EId i) env
+  emit "bipush 1"
+  emit "subi"
+  emit "istore " ++ i'
+  compileExp (EId i) env -- Return n, not n - 1
+  where i' = lookupAddr i env
 compileExp (EDouble exp) env = error "not defined for doubles"
 compileExp (EOr e1 e2) env = do
-  emit "not implemented"
+  tryAgain <- newLabel env
+  false <- newLabel env
+  true <- newLabel env
+  done <- newLabel env
+  compileExp e1 env
+  emit $ "ifeq " ++ tryAgain
+  emit $ "goto " ++ true
+  emit $ tryAgain ++ ":"
+  compileExp e2 env
+  emit $ "ifeq " ++ false
+  emit $ true ++ ":"
+  emit $ "bitpush 1"
+  emit $ "goto " ++ done
+  emit $ false ++ ":"
+  emit $ "bitpush 0"
+  emit $ done ++ ":"
 compileExp (EAnd e1 e2) env = do
-  emit "not implemented"
+  false <- newLabel env
+  done <- newLabel env
+  compileExp e1 env
+  emit $ "ifeq " ++ false
+  compileExp e2 env
+  emit $ "ifeq " ++ false
+  emit $ "bitpush 1"
+  emit $ "goto " ++ done
+  emit $ false ++ ":"
+  emit $ "bitpush 0"
+  emit $ done ++ ":"
 compileExp (EMinus e1 e2) env = do
-  emit "not implemented"
+  compileExp e1 env
+  compileExp e2 env
+  emit "isub"
 compileExp (ETimes e1 e2) env = do
-  emit "not implemented"
+  compileExp e1 env
+  compileExp e2 env
+  emit "imul"
 compileExp (EDecr exp) env = do
-  emit "not implemented"
-compileExp (EIncr exp) env = do
-  emit "not implemented"
+  compileExp (EMinus (Eid i) (EInt 1)) env
+  emit "istore " ++ show i'
+  emit "iload " ++ show i'
+  where i' = lookupAddr i env
+compileExp (EIncr (Eid i)) env = do
+  compileExp (EAdd (Eid i) (EInt 1)) env
+  emit "istore " ++ show i'
+  emit "iload " ++ show i' -- Load data back on stack
+  where i' = lookupAddr i env
 compileExp ETrue env = do
-  emit "not implemented"
+  emit "bitpush 1"
 compileExp EFalse env = do
-  emit "not implemented"
+  emit "bitpush 0"
 compileExp (ELtEq e1 e2) env = compareExp "if_icmple" e1 e2 env
 compileExp (ELt e1 e2) env = compareExp "if_icmplt" e1 e2 env
 compileExp (EGtWq e1 e2) env = compareExp "if_icmpge" e1 e2 env
@@ -213,7 +258,7 @@ compileExp (EEq e1 e2) env = compareExp "if_icmpeq" e1 e2 env
 -- int a, int b => II
 -- bool a, int b => ZI
 compressArgs :: [Arg] -> String
-compressArgs [] = ""
+compressArgs [] = "isub"
 compressArgs ((ADecl t _):args) = (mapType t) ++ compressArgs args
 
 mapType :: Type -> String
