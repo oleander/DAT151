@@ -13,14 +13,22 @@ UsingDef . Def ::=  "using" Type ";";
 TypeDefInit . Def ::= Type [Id] "=" [P] ";" ;
 
 DInline . Inline ::= "inline" ;
-EmptyFun . EFun ::= Type Id "(" [Arg] ")" ";" ;
+EmptyFun . EFun ::= Type Id "(" [ArgDef] ")" ";" ;
 DEmptyFunA . Def ::= Inline EFun ;
 DEmptyFun. Def ::= EFun ;
+
+ADeclBaseWOIdDef . ArgDef ::= Type ;
+ADeclBaseWOId . ArgDef ::= Type Id ;
+separator ArgDef "," ;
 
 NonEmptyFun . NEmptyFun ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 DIFun. Def ::= Inline NEmptyFun;
 DFun. Def ::= NEmptyFun;
 
+-- Structs
+DStruct. Stm ::= "struct" Id "{" [Member] "}" ";";
+SMemberDecl . Member ::= Type Id ;
+terminator Member ";" ;
 
 separator Arg "," ;
 
@@ -28,17 +36,14 @@ separator Arg "," ;
 ADeclBase . Arg ::= Type Id ;
 ADecl . Arg ::= Arg "=" Exp ;
 
--- Structs
-DStruct. Def ::= "struct" Id "{" [Member] "}" ";";
-SMemberDecl . Member ::= Type Id ;
-terminator Member ";" ;
-
 -- Statements
 SExp . Stm2 ::= Exp ";" ;
 SE . P ::= Exp;
 separator nonempty P "," ;
 SInit . Stm ::= Type [Id] "=" [P] ";" ;
-SFor . Stm ::= "for" "(" Stm Exp ";" Exp ")" Exp ";" ;
+SForBody . ForBody ::= "for" "(" Stm Stm Exp ")" ;
+SFor . Stm ::= ForBody Exp ";" ;
+SForWithBlock . Stm ::=  ForBody "{" [Stm] "}" ;
 SReturn. Stm ::= "return" Exp ";" ;
 SDo. Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
 SWhile. Stm ::= "while" "(" Exp ")" Stm ;
