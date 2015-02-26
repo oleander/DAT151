@@ -1,23 +1,30 @@
 PDefs . Program ::= [Def] ;
 separator nonempty Id "," ;
 terminator Stm "" ;
-
 terminator Def "" ;
 
 comment "//" ;
 comment "#" ;
 comment "/*" "*/" ;
 
-TypeDef . Def ::=  "typedef" QualifiedConst Type ";";
-TypeExp . Stm ::=  "typedef" QualifiedConst Type ";";
-UsingDef . Def ::=  "using" QualifiedConst ";";
+TypeDef . Def ::=  "typedef" Type Id ";";
+TypeExp . Stm ::=  "typedef" Type Id ";";
+UsingDef . Def ::=  "using" Type ";";
+TypeDefInit . Def ::= Type [Id] "=" [P] ";" ;
 
-DFun. Def ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
-DEmptyFun. Def ::= Type Id "(" [Arg] ")" ";" ;
+DInline . Inline ::= "inline" ;
+EmptyFun . EFun ::= Type Id "(" [Arg] ")" ";" ;
+DEmptyFunA . Def ::= Inline EFun ;
+DEmptyFun. Def ::= EFun ;
+
+NonEmptyFun . NEmptyFun ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+DIFun. Def ::= Inline NEmptyFun;
+DFun. Def ::= NEmptyFun;
+
 
 separator Arg "," ;
 
-ADeclBaseWOId . Arg ::= Type;
+-- ADeclBaseWOId . Arg ::= Type;
 ADeclBase . Arg ::= Type Id ;
 ADecl . Arg ::= Arg "=" Exp ;
 
@@ -28,7 +35,9 @@ terminator Member ";" ;
 
 -- Statements
 SExp . Stm2 ::= Exp ";" ;
-SInit . Stm ::= Type [Id] "=" [Exp] ";" ;
+SE . P ::= Exp;
+separator nonempty P "," ;
+SInit . Stm ::= Type [Id] "=" [P] ";" ;
 SFor . Stm ::= "for" "(" Stm Exp ";" Exp ")" Exp ";" ;
 SReturn. Stm ::= "return" Exp ";" ;
 SDo. Stm ::= "do" Stm "while" "(" Exp ")" ";" ;
@@ -40,9 +49,9 @@ SDecls . Stm ::= Type [Id] ";" ;
 
 coercions Stm 2 ;
 
-separator Types "," ;
+separator nonempty Types "," ;
 TypeListElem . Types ::= Type ;
-QualifiedConstElemId . QualifiedConstElem ::= Id ;
+QualifiedConstElemId . QualifiedConstElem ::= Id;
 QualifiedConstElemInstance . QualifiedConstElem ::= Id "<" [Types] ">" ;
 
 EQualifiedConst . Exp16 ::= QualifiedConst ;
@@ -95,9 +104,8 @@ coercions Exp 16 ;
 separator Exp "," ;
 
 rules Type ::= "bool" | "int" | "double" | "void" | QualifiedConst;
-
 TRef. Type ::= Type "&" ;
 TPtr. Type ::= Type "*" ;
-TConst . Type ::= "const" Type ;
+TConst . T ::= "const" Type ;
 
 token Id (letter (letter | digit | '_')*) ;
