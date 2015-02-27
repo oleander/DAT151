@@ -29,14 +29,6 @@ data Env = Env {
   counter :: IO Counter
 }
 
---counter = unsafePerform $ newIORef 0
-
---newNode _ = unsafePerformIO $
---              do
---                i <- readIORef counter
---                writeIORef counter (i+1)
---                return i
-
 makeCounter :: IO Counter
 makeCounter = do
     r <- newIORef 0
@@ -125,6 +117,15 @@ compile (PDefs defs) = do
   emit "invokenonvirtual java/lang/Object/&lt;init>()V"
   emit "return"
   emit ".end method"
+
+  emit ".method public static main([Ljava/lang/String;)V"
+  emit ".limit locals 1"
+   
+  emit "invokestatic C/main()I"
+  emit "pop"
+  emit "return"
+  emit ".end method"
+
   mapM_ (\def -> compileDef def env) defs
   where env = foldr extendFun emptyEnv defs
 
@@ -138,7 +139,6 @@ compileStms (stm:stms) env rType =
     (SInit t i exp) -> do
       env' <- extend i env
       compileExp exp env'
-      emit "dup"
       emit $ "istore " ++ show (lookupAddr i env')
       compileStms stms env' rType
     (SExp exp) -> do
@@ -205,10 +205,16 @@ compileExp (EId i) env = emit $ "iload " ++ show i'
   where i' = lookupAddr i env
 compileExp (EApp (Id i) exps) env = do
   mapM_ (\exp -> compileExp exp env) exps
-  emit $ "invokestatic C/" ++ i ++ "(" ++ args' ++ ")" ++ (mapType rType)
+  emit $ "invokestatic " ++ klass ++ "/" ++ i ++ "(" ++ args' ++ ")" ++ (mapType rType)
   where 
     args' = compressArgs args
     (rType, args) = lookupFun (Id i) env
+    klass = case i of
+      "readInt"      -> "Runtime"
+      "printDouble"  -> "Runtime"
+      "readDouble"   -> "Runtime"
+      "printInt"     -> "Runtime"
+      _              -> "C"
 
 compileExp (EPIncr (EId i)) env = do
   compileExp (EId i) env
@@ -284,6 +290,7 @@ compileExp (ENEq e1 e2) env = compareExp "if_icmpne" e1 e2 env
 compileExp (EEq e1 e2) env = compareExp "if_icmpeq" e1 e2 env
 compileExp (EAss (EId i) exp) env = do
   compileExp exp env
+  emit "dup"
   emit $ "istore " ++ show i'
   where i' = lookupAddr i env
 compileExp exp _ = error $ "not implemented" ++ show exp
@@ -316,7 +323,7 @@ compareExp operator e1 e2 env = do
   emit "bitpush 1"
   compileExp e1 env
   compileExp e2 env
-  emit $ (show operator) ++ " " ++ true
+  emit $ operator ++ " " ++ true
   emit "pop"
   emit "bitpush 0"
   emit $ true ++ ":"
