@@ -5,6 +5,7 @@ import PrintCPP
 import ErrM
 
 import Control.Monad
+import System.IO.Unsafe
 import qualified Data.Map as Map
 import Data.IORef
 import Data.Maybe
@@ -28,11 +29,25 @@ data Env = Env {
   counter :: IO Counter
 }
 
+--counter = unsafePerform $ newIORef 0
+
+--newNode _ = unsafePerformIO $
+--              do
+--                i <- readIORef counter
+--                writeIORef counter (i+1)
+--                return i
+
 makeCounter :: IO Counter
 makeCounter = do
     r <- newIORef 0
     return (\i -> do modifyIORef r (+i)
                      readIORef r)
+
+labelCntr :: IORef Integer
+labelCntr = unsafePerformIO $ newIORef 0
+
+addrCntr :: IORef Integer
+addrCntr = unsafePerformIO $ newIORef 0
 
 emptyScope :: Scope
 emptyScope = [Map.empty]
@@ -79,19 +94,19 @@ emptyEnv = Env {
 }
 
 newLabel :: Env -> IO String
-newLabel env@Env{ counter = c } = do
-  counter <- c
-  i <- counter 1
-  return $ "Label" ++ show i
+newLabel _ = do
+  c <- readIORef labelCntr
+  writeIORef labelCntr (c + 1)
+  return $ "Label" ++ show c
 
-extend :: Id -> Env -> Env
-extend (Id i) env@Env{ addrCounter = counter, scope = (block:s) } = 
+extend :: Id -> Env -> IO Env
+extend (Id i) env@Env{ scope = (block:s) } = do 
+  counter <- readIORef addrCntr
+  writeIORef addrCntr (counter + 1)
   if Map.member i block
   then error $ show i ++ " already declared"
   -- Always increment counter by one as we don't need doubles
-  else env { addrCounter = counter + 1, scope = scope' }
-  where
-    scope' = Map.insert i counter block : s
+  else return env { scope = (Map.insert i counter block) : s }
 
 extendFun :: Def -> Env -> Env
 extendFun (DFun t i args _) env@Env{ functionScope = functionScope } = 
@@ -118,18 +133,17 @@ compileStms [] _               _ = return ()
 compileStms (stm:stms) env rType =
   case stm of
     (SDecls t ids) -> do
+      env' <- compressIdsWithEnv ids env
       compileStms stms env' rType
-      where env' = foldr extend env ids
+
 
 
     (SInit t i exp) -> do
+      env' <- extend i env
       compileExp exp env'
       emit "dup"
-      emit $ "istore " ++ show i'
+      emit $ "istore " ++ show (lookupAddr i env')
       compileStms stms env' rType
-      where 
-        env' = extend i env
-        i' = lookupAddr i env'
 
     (SExp exp) -> do
       compileExp exp env
@@ -167,6 +181,7 @@ compileStms (stm:stms) env rType =
 
 compileDef :: Def -> Env -> IO ()
 compileDef (DFun t (Id i) args stms) env = do
+  env' <- compressArgsWithEnv args env
   emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
   emit ".limit locals 1000" -- TODO: Calculate this
   emit ".limit stack 1000" -- TODO: Calculate this
@@ -174,7 +189,6 @@ compileDef (DFun t (Id i) args stms) env = do
   emit ".end method"
   where 
     args' = compressArgs args
-    env' = foldr (\(ADecl _ id) env -> extend id env) env args
 compileExp :: Exp -> Env -> IO ()
 compileExp (EInt i) env = 
   emit $ "ldc " ++ show i
@@ -267,12 +281,27 @@ compileExp (EGtWq e1 e2) env = compareExp "if_icmpge" e1 e2 env
 compileExp (EGt e1 e2) env = compareExp "if_icmpgt" e1 e2 env
 compileExp (ENEq e1 e2) env = compareExp "if_icmpne" e1 e2 env
 compileExp (EEq e1 e2) env = compareExp "if_icmpeq" e1 e2 env
+compileExp (EAss (EId i) exp) env = do
+  compileExp exp env
+  emit $ "istore " ++ show i'
+  where i' = lookupAddr i env
+compileExp exp _ = error $ "not implemented" ++ show exp
 
 -- int a, int b => II
 -- bool a, int b => ZI
 compressArgs :: [Arg] -> String
 compressArgs [] = ""
 compressArgs ((ADecl t _):args) = (mapType t) ++ compressArgs args
+
+compressArgsWithEnv :: [Arg] -> Env -> IO Env
+compressArgsWithEnv [] env = return env
+compressArgsWithEnv ((ADecl _ id):args) env = do
+  env' <- extend id env
+  compressArgsWithEnv args env'
+
+compressIdsWithEnv :: [Id] -> Env -> IO Env
+compressIdsWithEnv [] env = return env
+compressIdsWithEnv (id:ids) env = extend id env
 
 mapType :: Type -> String
 mapType Type_bool = "Z"
@@ -283,6 +312,15 @@ mapType t = error $ "not defined for " ++ show t
 compareExp :: Operator -> Exp -> Exp -> Env -> IO ()
 compareExp operator e1 e2 env = do
   true <- newLabel env
+  --a1 <- newLabel env
+  --a2 <- newLabel env
+  --a3 <- newLabel env
+
+  --emit "------"
+  --emit $ a1
+  --emit $ a2
+  --emit $ a3
+  --emit "------"
   emit "bitpush 1"
   compileExp e1 env
   compileExp e2 env
