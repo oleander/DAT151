@@ -6,6 +6,7 @@ import ErrM
 
 import Control.Monad
 import System.IO.Unsafe
+import qualified Data.Text as T
 import qualified Data.Map as Map
 import Data.IORef
 import Data.Maybe
@@ -41,6 +42,9 @@ labelCntr = unsafePerformIO $ newIORef 0
 addrCntr :: IORef Integer
 addrCntr = unsafePerformIO $ newIORef 0
 
+currentClass :: IORef String
+currentClass = unsafePerformIO $ newIORef ""
+
 emptyScope :: Scope
 emptyScope = [Map.empty]
 
@@ -75,7 +79,6 @@ lookupFun i env@Env { functionScope = scope } =
     _                 -> case Map.lookup i scope of
                     Just val -> val
                     Nothing  -> error $ show i ++ " not found"
-
 emptyEnv :: Env
 emptyEnv = Env {
   labelCounter  = 0,
@@ -108,26 +111,36 @@ extendFun (DFun t i args _) env@Env{ functionScope = functionScope } =
   where
     functionScope' = Map.insert i (t, args) functionScope
 
-compile :: Program -> IO ()
-compile (PDefs defs) = do
-  emit ".class public C"
+compile :: Program -> String -> IO ()
+compile (PDefs defs) klass = do
+  emit $ ".class public " ++ klass'
   emit ".super java/lang/Object"
   emit ".method public <init>()V"
   emit "aload_0"
-  emit "invokenonvirtual java/lang/Object/&lt;init>()V"
+  emit "invokespecial java/lang/Object/<init>()V"
   emit "return"
   emit ".end method"
 
   emit ".method public static main([Ljava/lang/String;)V"
   emit ".limit locals 1"
    
-  emit "invokestatic C/main()I"
+  emit $ "invokestatic " ++ klass' ++ "/main()I"
   emit "pop"
   emit "return"
   emit ".end method"
 
+  writeIORef currentClass klass'
+
   mapM_ (\def -> compileDef def env) defs
-  where env = foldr extendFun emptyEnv defs
+  where 
+    env = foldr extendFun emptyEnv defs
+    klass' = onlyClass klass
+
+onlyClass :: String -> String
+onlyClass [] = []
+onlyClass (x:xs) 
+  | x == '.'  = []
+  | otherwise = x : (onlyClass xs)
 
 compileStms :: [Stm] -> Env -> Type -> IO ()
 compileStms [] _               _ = return ()
@@ -204,18 +217,12 @@ compileExp (EDiv a b) env = do
 compileExp (EId i) env = emit $ "iload " ++ show i'
   where i' = lookupAddr i env
 compileExp (EApp (Id i) exps) env = do
+  klass <- getClassFrom i
   mapM_ (\exp -> compileExp exp env) exps
   emit $ "invokestatic " ++ klass ++ "/" ++ i ++ "(" ++ args' ++ ")" ++ (mapType rType)
   where 
     args' = compressArgs args
     (rType, args) = lookupFun (Id i) env
-    klass = case i of
-      "readInt"      -> "Runtime"
-      "printDouble"  -> "Runtime"
-      "readDouble"   -> "Runtime"
-      "printInt"     -> "Runtime"
-      _              -> "C"
-
 compileExp (EPIncr (EId i)) env = do
   compileExp (EId i) env
   emit "bipush 1"
@@ -243,10 +250,10 @@ compileExp (EOr e1 e2) env = do
   compileExp e2 env
   emit $ "ifeq " ++ false
   emit $ true ++ ":"
-  emit $ "bitpush 1"
+  emit $ "bipush 1"
   emit $ "goto " ++ done
   emit $ false ++ ":"
-  emit $ "bitpush 0"
+  emit $ "bipush 0"
   emit $ done ++ ":"
 compileExp (EAnd e1 e2) env = do
   false <- newLabel env
@@ -255,10 +262,10 @@ compileExp (EAnd e1 e2) env = do
   emit $ "ifeq " ++ false
   compileExp e2 env
   emit $ "ifeq " ++ false
-  emit $ "bitpush 1"
+  emit $ "bipush 1"
   emit $ "goto " ++ done
   emit $ false ++ ":"
-  emit $ "bitpush 0"
+  emit $ "bipush 0"
   emit $ done ++ ":"
 compileExp (EMinus e1 e2) env = do
   compileExp e1 env
@@ -279,9 +286,9 @@ compileExp (EIncr (EId i)) env = do
   emit $ "iload " ++ show i' -- Load data back on stack
   where i' = lookupAddr i env
 compileExp ETrue env = do
-  emit "bitpush 1"
+  emit "bipush 1"
 compileExp EFalse env = do
-  emit "bitpush 0"
+  emit "bipush 0"
 compileExp (ELtEq e1 e2) env = compareExp "if_icmple" e1 e2 env
 compileExp (ELt e1 e2) env = compareExp "if_icmplt" e1 e2 env
 compileExp (EGtWq e1 e2) env = compareExp "if_icmpge" e1 e2 env
@@ -294,6 +301,15 @@ compileExp (EAss (EId i) exp) env = do
   emit $ "istore " ++ show i'
   where i' = lookupAddr i env
 compileExp exp _ = error $ "not implemented" ++ show exp
+
+getClassFrom :: String -> IO String
+getClassFrom klass =
+  case klass of
+  "readInt"      -> return "Runtime"
+  "printDouble"  -> return "Runtime"
+  "readDouble"   -> return "Runtime"
+  "printInt"     -> return "Runtime"
+  _              -> readIORef currentClass
 
 -- int a, int b => II
 -- bool a, int b => ZI
@@ -320,12 +336,12 @@ mapType t         = error $ "not defined for " ++ show t
 compareExp :: Operator -> Exp -> Exp -> Env -> IO ()
 compareExp operator e1 e2 env = do
   true <- newLabel env
-  emit "bitpush 1"
+  emit "bipush 1"
   compileExp e1 env
   compileExp e2 env
   emit $ operator ++ " " ++ true
   emit "pop"
-  emit "bitpush 0"
+  emit "bipush 0"
   emit $ true ++ ":"
 
 emit :: String -> IO()
