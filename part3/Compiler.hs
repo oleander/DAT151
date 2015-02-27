@@ -73,8 +73,8 @@ lookupAddr (Id i) env@Env{ scope = scope' } =
         Just val -> val
         Nothing -> lookupAddr (Id i) env { scope = e }
 
-lookupFun :: Id -> Env -> Int -> Fun
-lookupFun i env@Env { functionScope = scope } noArgs =
+lookupFun :: Id -> Env -> Fun
+lookupFun i env@Env { functionScope = scope } =
   case i of
     Id "readInt"      -> (Type_int, [])
     Id "printDouble"  -> error "not defined"
@@ -135,19 +135,20 @@ compileStms (stm:stms) env rType =
     (SDecls t ids) -> do
       env' <- compressIdsWithEnv ids env
       compileStms stms env' rType
-
-
-
     (SInit t i exp) -> do
       env' <- extend i env
       compileExp exp env'
       emit "dup"
       emit $ "istore " ++ show (lookupAddr i env')
       compileStms stms env' rType
-
     (SExp exp) -> do
       compileExp exp env
-      emit "pop"
+      case exp of
+        (EApp i _) ->
+          case lookupFun i env of
+            (Type_void, _) -> emit ""
+            (_, _) -> emit "pop"
+        _          -> emit "pop"
       compileStms stms env rType
     (SBlock s) -> do
       compileStms s (newBlock env) rType
@@ -207,7 +208,7 @@ compileExp (EApp (Id i) exps) env = do
   emit $ "invokestatic C/" ++ i ++ "(" ++ args' ++ ")" ++ (mapType rType)
   where 
     args' = compressArgs args
-    (rType, args) = lookupFun (Id i) env (length exps)
+    (rType, args) = lookupFun (Id i) env
 
 compileExp (EPIncr (EId i)) env = do
   compileExp (EId i) env
@@ -290,37 +291,28 @@ compileExp exp _ = error $ "not implemented" ++ show exp
 -- int a, int b => II
 -- bool a, int b => ZI
 compressArgs :: [Arg] -> String
-compressArgs [] = ""
+compressArgs []                 = ""
 compressArgs ((ADecl t _):args) = (mapType t) ++ compressArgs args
 
 compressArgsWithEnv :: [Arg] -> Env -> IO Env
-compressArgsWithEnv [] env = return env
+compressArgsWithEnv [] env                  = return env
 compressArgsWithEnv ((ADecl _ id):args) env = do
   env' <- extend id env
   compressArgsWithEnv args env'
 
 compressIdsWithEnv :: [Id] -> Env -> IO Env
-compressIdsWithEnv [] env = return env
+compressIdsWithEnv [] env       = return env
 compressIdsWithEnv (id:ids) env = extend id env
 
 mapType :: Type -> String
 mapType Type_bool = "Z"
-mapType Type_int = "I"
+mapType Type_int  = "I"
 mapType Type_void = "V"
-mapType t = error $ "not defined for " ++ show t
+mapType t         = error $ "not defined for " ++ show t
 
 compareExp :: Operator -> Exp -> Exp -> Env -> IO ()
 compareExp operator e1 e2 env = do
   true <- newLabel env
-  --a1 <- newLabel env
-  --a2 <- newLabel env
-  --a3 <- newLabel env
-
-  --emit "------"
-  --emit $ a1
-  --emit $ a2
-  --emit $ a3
-  --emit "------"
   emit "bitpush 1"
   compileExp e1 env
   compileExp e2 env
@@ -329,5 +321,5 @@ compareExp operator e1 e2 env = do
   emit "bitpush 0"
   emit $ true ++ ":"
 
-emit :: Show a => a -> IO()
-emit x = putStrLn $ show x
+emit :: String -> IO()
+emit x = putStrLn x
