@@ -10,6 +10,7 @@ import Data.IORef
 import Data.Maybe
 import Control.Monad.IO.Class
 import Data.IORef
+import Debug.Trace
 
 import Data.List (nub)
 
@@ -57,11 +58,16 @@ lookupAddr (Id i) env@Env{ scope = scope' } =
         Just val -> val
         Nothing -> lookupAddr (Id i) env { scope = e }
 
-lookupFun :: Id -> Env -> Fun
-lookupFun i env@Env { functionScope = scope } =
-  case Map.lookup i scope of
-    Just val -> val
-    Nothing -> error $ show i ++ " not found"
+lookupFun :: Id -> Env -> Int -> Fun
+lookupFun i env@Env { functionScope = scope } noArgs =
+  case i of
+    Id "readInt"      -> (Type_int, [])
+    Id "printDouble"  -> error "not defined"
+    Id "readDouble"   -> error "not defined"
+    Id "printInt"     -> (Type_void, [ADecl Type_int (Id "x")])
+    _                 -> case Map.lookup i scope of
+                    Just val -> val
+                    Nothing  -> error $ show i ++ " not found"
 
 emptyEnv :: Env
 emptyEnv = Env {
@@ -107,65 +113,71 @@ compile (PDefs defs) = do
   mapM_ (\def -> compileDef def env) defs
   where env = foldr extendFun emptyEnv defs
 
-compileStms :: [Stm] -> Env -> IO ()
-compileStms [] _           = return ()
-compileStms (stm:stms) env =
+compileStms :: [Stm] -> Env -> Type -> IO ()
+compileStms [] _               _ = return ()
+compileStms (stm:stms) env rType =
   case stm of
     (SDecls t ids) -> do
-      compileStms stms env'
+      compileStms stms env' rType
       where env' = foldr extend env ids
+
+
     (SInit t i exp) -> do
-      compileExp exp env
+      compileExp exp env'
       emit "dup"
       emit $ "istore " ++ show i'
-      compileStms stms env
-      where i' = lookupAddr i env
+      compileStms stms env' rType
+      where 
+        env' = extend i env
+        i' = lookupAddr i env'
+
     (SExp exp) -> do
       compileExp exp env
       emit "pop"
-      compileStms stms env
+      compileStms stms env rType
     (SBlock s) -> do
-      compileStms s (newBlock env)
-      compileStms stms (removeBlock env)
+      compileStms s (newBlock env) rType
+      compileStms stms (removeBlock env) rType
     (SIfElse exp s1 s2) -> do
       done <- newLabel env
       false <- newLabel env
       compileExp exp env
       emit $ "ifeq " ++ false
-      compileStms [s1] env
+      compileStms [s1] env rType
       emit $ "goto " ++ done
       emit $ false ++ ":"
-      compileStms [s2] env
+      compileStms [s2] env rType
       emit $ done ++ ":"
-      compileStms stms env
+      compileStms stms env rType
     (SWhile exp stm) -> do
       test <- newLabel env
       end <- newLabel env
       emit $ test ++ ":"
       compileExp exp env
       emit $ "ifeq " ++ end
-      compileStms [stm] env
+      compileStms [stm] env rType
       emit $ "goto " ++ test
       emit $ end ++ ":"
-      compileStms stms env
+      compileStms stms env rType
     (SReturn exp) -> do
       compileExp exp env
-      emit "ireturn"
+      case rType of
+        Type_void -> emit "return"
+        _         -> emit "ireturn"
 
 compileDef :: Def -> Env -> IO ()
 compileDef (DFun t (Id i) args stms) env = do
-  case i of
-    "main" -> emit $ ".method public static main([Ljava/lang/String;)V"
-    i      -> emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
+  emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
   emit ".limit locals 1000" -- TODO: Calculate this
   emit ".limit stack 1000" -- TODO: Calculate this
-  compileStms stms env'
+  compileStms stms env' t
   emit ".end method"
   where 
     args' = compressArgs args
-    env' = foldl (\(ADecl _ id) env -> extend id env) env args
+    env' = foldr (\(ADecl _ id) env -> extend id env) env args
 compileExp :: Exp -> Env -> IO ()
-compileExp (EInt i) env = emit $ "ldc " ++ show i
+compileExp (EInt i) env = 
+  emit $ "ldc " ++ show i
 compileExp (EPlus a b) env = do
   compileExp a env
   compileExp b env
@@ -181,19 +193,20 @@ compileExp (EApp (Id i) exps) env = do
   emit $ "invokestatic C/" ++ i ++ "(" ++ args' ++ ")" ++ (mapType rType)
   where 
     args' = compressArgs args
-    (rType, args) = lookupFun (Id i) env
+    (rType, args) = lookupFun (Id i) env (length exps)
+
 compileExp (EPIncr (EId i)) env = do
   compileExp (EId i) env
   emit "bipush 1"
   emit "addi"
-  emit "istore " ++ i'
+  emit $ "istore " ++ show i'
   compileExp (EId i) env -- Return n, not n + 1
   where i' = lookupAddr i env
 compileExp (EPDecr (EId i)) env = do
   compileExp (EId i) env
   emit "bipush 1"
   emit "subi"
-  emit "istore " ++ i'
+  emit $ "istore " ++ show i'
   compileExp (EId i) env -- Return n, not n - 1
   where i' = lookupAddr i env
 compileExp (EDouble exp) env = error "not defined for doubles"
@@ -234,15 +247,15 @@ compileExp (ETimes e1 e2) env = do
   compileExp e1 env
   compileExp e2 env
   emit "imul"
-compileExp (EDecr exp) env = do
-  compileExp (EMinus (Eid i) (EInt 1)) env
-  emit "istore " ++ show i'
-  emit "iload " ++ show i'
+compileExp (EDecr (EId i)) env = do
+  compileExp (EMinus (EId i) (EInt 1)) env
+  emit $ "istore " ++ show i'
+  emit $ "iload " ++ show i'
   where i' = lookupAddr i env
-compileExp (EIncr (Eid i)) env = do
-  compileExp (EAdd (Eid i) (EInt 1)) env
-  emit "istore " ++ show i'
-  emit "iload " ++ show i' -- Load data back on stack
+compileExp (EIncr (EId i)) env = do
+  compileExp (EPlus (EId i) (EInt 1)) env
+  emit $ "istore " ++ show i'
+  emit $ "iload " ++ show i' -- Load data back on stack
   where i' = lookupAddr i env
 compileExp ETrue env = do
   emit "bitpush 1"
@@ -258,7 +271,7 @@ compileExp (EEq e1 e2) env = compareExp "if_icmpeq" e1 e2 env
 -- int a, int b => II
 -- bool a, int b => ZI
 compressArgs :: [Arg] -> String
-compressArgs [] = "isub"
+compressArgs [] = ""
 compressArgs ((ADecl t _):args) = (mapType t) ++ compressArgs args
 
 mapType :: Type -> String
@@ -279,4 +292,4 @@ compareExp operator e1 e2 env = do
   emit $ true ++ ":"
 
 emit :: Show a => a -> IO()
-emit = print
+emit x = putStrLn $ show x
