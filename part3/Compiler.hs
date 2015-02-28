@@ -164,8 +164,11 @@ compileStms (stm:stms) env rType =
         _          -> emit "pop"
       compileStms stms env rType
     (SBlock s) -> do
-      compileStms s (newBlock env) rType
-      compileStms stms (removeBlock env) rType
+      compileStms s env' rType
+      compileStms stms env'' rType
+      where 
+        env' = newBlock env
+        env'' = removeBlock env'
     (SIfElse exp s1 s2) -> do
       done <- newLabel env
       false <- newLabel env
@@ -226,14 +229,14 @@ compileExp (EApp (Id i) exps) env = do
 compileExp (EPIncr (EId i)) env = do
   compileExp (EId i) env
   emit "bipush 1"
-  emit "addi"
+  emit "iadd"
   emit $ "istore " ++ show i'
   compileExp (EId i) env -- Return n, not n + 1
   where i' = lookupAddr i env
 compileExp (EPDecr (EId i)) env = do
   compileExp (EId i) env
   emit "bipush 1"
-  emit "subi"
+  emit "isub"
   emit $ "istore " ++ show i'
   compileExp (EId i) env -- Return n, not n - 1
   where i' = lookupAddr i env
