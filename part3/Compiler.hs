@@ -205,9 +205,10 @@ compileDef (DFun t (Id i) args stms) env = do
   emit ".limit stack 1000" -- TODO: Calculate this
   compileStms stms env' t
   -- Add return to main
+  -- If main doesn't have a return statement
   case (i, t) of
     ("main", Type_int) -> do
-      emit "ldc 1"
+      emit "ldc 0"
       emit "ireturn"
     e -> return ()
   emit ".end method"
@@ -295,7 +296,7 @@ compileExp (EDecr (EId i)) env = do
 compileExp (EIncr (EId i)) env = do
   compileExp (EPlus (EId i) (EInt 1)) env
   emit $ "istore " ++ show i'
-  emit $ "iload " ++ show i' -- Load data back on stack
+  emit $ "iload " ++ show i'
   where i' = lookupAddr i env
 compileExp ETrue env = do
   emit "bipush 1"
