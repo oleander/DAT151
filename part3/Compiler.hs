@@ -159,9 +159,9 @@ compileStms (stm:stms) env rType =
       case exp of
         (EApp i _) ->
           case lookupFun i env of
-            (Type_void, _) -> emit ""
-            (_, _) -> emit "pop"
-        _          -> emit "pop"
+            (Type_void, _) -> return ()
+            (_, _)         -> emit "pop"
+        _                  -> emit "pop"
       compileStms stms env rType
     (SBlock s) -> do
       compileStms s env' rType
@@ -203,6 +203,12 @@ compileDef (DFun t (Id i) args stms) env = do
   emit ".limit locals 1000" -- TODO: Calculate this
   emit ".limit stack 1000" -- TODO: Calculate this
   compileStms stms env' t
+  -- Add return to main
+  case (i, t) of
+    ("main", Type_void) -> do
+      emit "ldc 1"
+      emit "ireturn"
+    _ -> return ()
   emit ".end method"
   where 
     args' = compressArgs args
