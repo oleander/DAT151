@@ -129,6 +129,7 @@ compile (PDefs defs) klass = do
   emit "return"
   emit ".end method"
 
+  -- Store current class name as global var
   writeIORef currentClass klass'
 
   mapM_ (\def -> compileDef def env) defs
@@ -205,10 +206,10 @@ compileDef (DFun t (Id i) args stms) env = do
   compileStms stms env' t
   -- Add return to main
   case (i, t) of
-    ("main", Type_void) -> do
+    ("main", Type_int) -> do
       emit "ldc 1"
       emit "ireturn"
-    _ -> return ()
+    e -> return ()
   emit ".end method"
   where 
     args' = compressArgs args
