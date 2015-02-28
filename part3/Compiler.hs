@@ -233,19 +233,21 @@ compileExp (EApp (Id i) exps) env = do
   where 
     args' = compressArgs args
     (rType, args) = lookupFun (Id i) env
+-- n++
 compileExp (EPIncr (EId i)) env = do
   compileExp (EId i) env
+  emit "dup"
   emit "bipush 1"
   emit "iadd"
   emit $ "istore " ++ show i'
-  compileExp (EId i) env -- Return n, not n + 1
   where i' = lookupAddr i env
+-- n--
 compileExp (EPDecr (EId i)) env = do
   compileExp (EId i) env
+  emit "dup"
   emit "bipush 1"
   emit "isub"
   emit $ "istore " ++ show i'
-  compileExp (EId i) env -- Return n, not n - 1
   where i' = lookupAddr i env
 compileExp (EDouble exp) env = error "not defined for doubles"
 compileExp (EOr e1 e2) env = do
