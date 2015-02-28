@@ -31,25 +31,15 @@ type FunScope = Map.Map Id Fun
 type Operator = String
 type Counter = Int -> IO Int
 data Env = Env { 
-  labelCounter :: Integer,
   scope :: Scope,
-  functionScope :: FunScope,
-  addrCounter :: Integer,
-  counter :: IO Counter
+  functionScope :: FunScope
 }
-
-makeCounter :: IO Counter
-makeCounter = do
-    r <- newIORef 0
-    return (\i -> do modifyIORef r (+i)
-                     readIORef r)
 
 labelCntr :: IORef Integer
 labelCntr = unsafePerformIO $ newIORef 0
 
 addrCntr :: IORef Integer
 addrCntr = unsafePerformIO $ newIORef 0
-
 
 resetAddrCounter = writeIORef addrCntr 0
 
@@ -95,11 +85,8 @@ lookupFun i env@Env { functionScope = scope } =
                     Nothing  -> error $ show i ++ " not found"
 emptyEnv :: Env
 emptyEnv = Env {
-  labelCounter  = 0,
-  addrCounter   = 0,
   scope         = emptyScope,
-  functionScope = emptyFunctionScope,
-  counter       = makeCounter
+  functionScope = emptyFunctionScope
 }
 
 newLabel :: Env -> IO String
@@ -127,11 +114,9 @@ extendFun (DFun t i args _) env@Env{ functionScope = functionScope } =
 
 compile :: Program -> String -> IO ()
 compile (PDefs defs) filePath = do
-
   -- Store current class name as global var
   writeIORef currentClass klass'
   writeIORef outputFile newFile
-
   removeIfExists newFile
   writeFile newFile ""
 
@@ -162,12 +147,6 @@ compile (PDefs defs) filePath = do
     klass' = last $ splitOn "/" $ head $ splitOn "." filePath
     newFile = (head $ splitOn "." filePath) ++ ".c"
     newFilePath = "./" ++ (intercalate "/" $ init $ splitOn "/" filePath)
-
-onlyClass :: String -> String
-onlyClass [] = []
-onlyClass (x:xs) 
-  | x == '.'  = []
-  | otherwise = x : (onlyClass xs)
 
 compileStms :: [Stm] -> Env -> Type -> IO ()
 compileStms [] _               _ = return ()
@@ -226,17 +205,10 @@ compileStms (stm:stms) env rType =
 compileDef :: Def -> Env -> IO ()
 compileDef (DFun t (Id i) args stms) env = do
   resetAddrCounter
-
   env' <- compressArgsWithEnv args env
-
-
-
-
-
   emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
-  emit ".limit locals 1000" -- TODO: Calculate this
-  emit ".limit stack 1000" -- TODO: Calculate this
-
+  emit ".limit locals 1000"
+  emit ".limit stack 1000"
   compileStms stms env' t
   case (i, t) of
     ("main", Type_int) -> do
