@@ -138,7 +138,7 @@ compile (PDefs defs) filePath = do
 
   mapM_ (\def -> compileDef def env) defs
 
-  system $ "java -jar /Users/linus/Documents/Projekt/DAT151-2/part3/jasmin-2.4/jasmin.jar -d " ++ newFilePath ++ " " ++ newFile
+  system $ "java -jar jasmin-2.4/jasmin.jar -d " ++ newFilePath ++ " " ++ newFile
 
   return ()
 
