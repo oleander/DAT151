@@ -337,7 +337,9 @@ compressArgsWithEnv ((ADecl _ id):args) env = do
 
 compressIdsWithEnv :: [Id] -> Env -> IO Env
 compressIdsWithEnv [] env       = return env
-compressIdsWithEnv (id:ids) env = extend id env
+compressIdsWithEnv (id:ids) env = do
+  env' <- extend id env
+  compressIdsWithEnv ids env'
 
 mapType :: Type -> String
 mapType Type_bool = "Z"
