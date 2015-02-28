@@ -50,6 +50,9 @@ labelCntr = unsafePerformIO $ newIORef 0
 addrCntr :: IORef Integer
 addrCntr = unsafePerformIO $ newIORef 0
 
+
+resetAddrCounter = writeIORef addrCntr 0
+
 currentClass :: IORef String
 currentClass = unsafePerformIO $ newIORef ""
 
@@ -222,10 +225,18 @@ compileStms (stm:stms) env rType =
 
 compileDef :: Def -> Env -> IO ()
 compileDef (DFun t (Id i) args stms) env = do
+  resetAddrCounter
+
   env' <- compressArgsWithEnv args env
+
+
+
+
+
   emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
   emit ".limit locals 1000" -- TODO: Calculate this
   emit ".limit stack 1000" -- TODO: Calculate this
+
   compileStms stms env' t
   case (i, t) of
     ("main", Type_int) -> do
