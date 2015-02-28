@@ -4,6 +4,9 @@ import AbsCPP
 import PrintCPP
 import ErrM
 
+import Data.List.Split
+import Data.List
+import System.Cmd
 import Control.Monad
 import System.IO.Unsafe
 import qualified Data.Text as T
@@ -13,6 +16,11 @@ import Data.Maybe
 import Control.Monad.IO.Class
 import Data.IORef
 import Debug.Trace
+
+import Prelude hiding (catch)
+import System.Directory
+import Control.Exception
+import System.IO.Error hiding (catch)
 
 import Data.List (nub)
 
@@ -44,6 +52,9 @@ addrCntr = unsafePerformIO $ newIORef 0
 
 currentClass :: IORef String
 currentClass = unsafePerformIO $ newIORef ""
+
+outputFile :: IORef String
+outputFile = unsafePerformIO $ newIORef ""
 
 emptyScope :: Scope
 emptyScope = [Map.empty]
@@ -112,7 +123,15 @@ extendFun (DFun t i args _) env@Env{ functionScope = functionScope } =
     functionScope' = Map.insert i (t, args) functionScope
 
 compile :: Program -> String -> IO ()
-compile (PDefs defs) klass = do
+compile (PDefs defs) filePath = do
+
+  -- Store current class name as global var
+  writeIORef currentClass klass'
+  writeIORef outputFile newFile
+
+  removeIfExists newFile
+  writeFile newFile ""
+
   emit $ ".class public " ++ klass'
   emit ".super java/lang/Object"
   emit ".method public <init>()V"
@@ -129,13 +148,17 @@ compile (PDefs defs) klass = do
   emit "return"
   emit ".end method"
 
-  -- Store current class name as global var
-  writeIORef currentClass klass'
-
   mapM_ (\def -> compileDef def env) defs
+
+  system $ "java -jar /Users/linus/Documents/Projekt/DAT151-2/part3/jasmin-2.4/jasmin.jar -d " ++ newFilePath ++ " " ++ newFile
+
+  return ()
+
   where 
     env = foldr extendFun emptyEnv defs
-    klass' = onlyClass klass
+    klass' = last $ splitOn "/" $ head $ splitOn "." filePath
+    newFile = (head $ splitOn "." filePath) ++ ".c"
+    newFilePath = "./" ++ (intercalate "/" $ init $ splitOn "/" filePath)
 
 onlyClass :: String -> String
 onlyClass [] = []
@@ -204,12 +227,12 @@ compileDef (DFun t (Id i) args stms) env = do
   emit ".limit locals 1000" -- TODO: Calculate this
   emit ".limit stack 1000" -- TODO: Calculate this
   compileStms stms env' t
-  -- Add return to main
-  -- If main doesn't have a return statement
   case (i, t) of
     ("main", Type_int) -> do
       emit "ldc 0"
       emit "ireturn"
+    (_, Type_void) -> do
+      emit "return"
     e -> return ()
   emit ".end method"
   where 
@@ -360,4 +383,12 @@ compareExp operator e1 e2 env = do
   emit $ true ++ ":"
 
 emit :: String -> IO()
-emit x = putStrLn x
+emit intruction = do 
+  fileName <- readIORef outputFile
+  appendFile fileName $ intruction ++ "\n"
+
+removeIfExists :: FilePath -> IO ()
+removeIfExists fileName = removeFile fileName `catch` handleExists
+  where handleExists e
+          | isDoesNotExistError e = return ()
+          | otherwise = throwIO e
