@@ -38,10 +38,18 @@ data Env = Env {
 labelCntr :: IORef Integer
 labelCntr = unsafePerformIO $ newIORef 0
 
+currentCodeState :: IORef [String]
+currentCodeState = unsafePerformIO $ newIORef []
+
 addrCntr :: IORef Integer
 addrCntr = unsafePerformIO $ newIORef 0
 
-resetAddrCounter = writeIORef addrCntr 0
+totalAddrCntr :: IORef Integer
+totalAddrCntr = unsafePerformIO $ newIORef 0
+
+resetAddrCounter = do 
+  writeIORef totalAddrCntr 0
+  writeIORef addrCntr 0
 
 currentClass :: IORef String
 currentClass = unsafePerformIO $ newIORef ""
@@ -98,7 +106,11 @@ newLabel _ = do
 extend :: Id -> Env -> IO Env
 extend (Id i) env@Env{ scope = (block:s) } = do 
   counter <- readIORef addrCntr
+  totalCounter <- readIORef totalAddrCntr
+
   writeIORef addrCntr (counter + 1)
+  writeIORef totalAddrCntr (totalCounter + 1)
+
   if Map.member i block
   then error $ show i ++ " already declared"
   -- Always increment counter by one as we don't need doubles
@@ -135,6 +147,9 @@ compile (PDefs defs) filePath = do
   emit "pop"
   emit "return"
   emit ".end method"
+
+  -- Write current state to file
+  emitToFile
 
   mapM_ (\def -> compileDef def env) defs
 
@@ -210,9 +225,6 @@ compileDef :: Def -> Env -> IO ()
 compileDef (DFun t (Id i) args stms) env = do
   resetAddrCounter
   env' <- compressArgsWithEnv args env
-  emit $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
-  emit ".limit locals 1000"
-  emit ".limit stack 1000"
   compileStms stms env' t
   case (i, t) of
     ("main", Type_int) -> do
@@ -222,6 +234,13 @@ compileDef (DFun t (Id i) args stms) env = do
       emit "return"
     e -> return ()
   emit ".end method"
+
+  noVars <- readIORef totalAddrCntr
+
+  prependCode $ ".limit locals " ++ show noVars
+  prependCode ".limit stack 1000"
+  prependCode $ ".method public static " ++ i ++ "(" ++ args' ++ ")" ++ (mapType t)
+  emitToFile
   where 
     args' = compressArgs args
 compileExp :: Exp -> Env -> IO ()
@@ -369,10 +388,25 @@ compareExp operator e1 e2 env = do
   emit "bipush 0"
   emit $ true ++ ":"
 
-emit :: String -> IO()
-emit intruction = do 
+emit :: String -> IO ()
+emit instruction = appendCode instruction
+
+appendCode :: String -> IO ()
+appendCode instruction = do
+  code <- readIORef currentCodeState
+  writeIORef currentCodeState (code ++ [instruction])
+
+prependCode :: String -> IO ()
+prependCode instruction = do
+  code <- readIORef currentCodeState
+  writeIORef currentCodeState (instruction : code)
+
+emitToFile :: IO ()
+emitToFile = do
   fileName <- readIORef outputFile
-  appendFile fileName $ intruction ++ "\n"
+  lines <- readIORef currentCodeState
+  appendFile fileName $ (intercalate "\n" lines) ++ "\n"
+  writeIORef currentCodeState []
 
 removeIfExists :: FilePath -> IO ()
 removeIfExists fileName = removeFile fileName `catch` handleExists
