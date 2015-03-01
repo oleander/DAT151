@@ -6,7 +6,7 @@ import ErrM
 
 import Data.List.Split
 import Data.List
-import System.Cmd
+import System.Process
 import Control.Monad
 import System.IO.Unsafe
 import qualified Data.Text as T
@@ -67,7 +67,6 @@ newBlock :: Env -> Env
 newBlock env@Env { scope = scope } = 
   env { scope = Map.empty : scope }
 
--- TODO: Free space by decrementing addrCounter
 removeBlock :: Env -> Env
 removeBlock env@Env { scope = scope } = 
   env { scope = tail scope }
@@ -109,6 +108,8 @@ extend (Id i) env@Env{ scope = (block:s) } = do
   totalCounter <- readIORef totalAddrCntr
 
   writeIORef addrCntr (counter + 1)
+
+  -- Keeps track on the number of locals
   writeIORef totalAddrCntr (totalCounter + 1)
 
   if Map.member i block
