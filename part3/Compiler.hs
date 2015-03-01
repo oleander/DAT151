@@ -138,7 +138,7 @@ compile (PDefs defs) filePath = do
 
   mapM_ (\def -> compileDef def env) defs
 
-  system $ "java -jar jasmin-2.4/jasmin.jar -d " ++ newFilePath ++ " " ++ newFile
+  system $ "java -jar jasmin.jar -d " ++ newFilePath ++ " " ++ newFile
 
   return ()
 
@@ -170,7 +170,11 @@ compileStms (stm:stms) env rType =
         _                  -> emit "pop"
       compileStms stms env rType
     (SBlock s) -> do
+      -- Current address counter
+      initCount <- readIORef addrCntr
       compileStms s env' rType
+      -- Reset counter after remove
+      writeIORef addrCntr initCount
       compileStms stms env'' rType
       where 
         env' = newBlock env
