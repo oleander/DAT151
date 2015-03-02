@@ -22,99 +22,110 @@ typecheck (PDefs defs) = do
   startEnv <- newEnv $ (builtIns ++ map defToEnvPair defs)
   mapM_ (checkDef startEnv) defs
 
+data WType = WType Type | None deriving (Show, Eq)
+
 checkStm :: Env -> Stm -> Err Env
 checkStm env s = case s of
   SExp e -> do
-    checkExp e Type_void env
+    checkExp e None env
     return env
   SDecls t ids ->
     foldM (\env' i -> addDecl env' i t) env ids
   SInit t i e -> do
-    checkExp e t env
+    checkExp e (WType t) env
     addDecl env i t
   SReturn e -> do
     returnT <- findVarT (Id "__RETURN__") env
-    checkExp e returnT env
+    checkExp e (WType returnT) env
     return env
   SWhile e stm -> do
-    checkExp e Type_bool env
+    checkExp e (WType Type_bool) env
     _ <- checkStm env stm
     return env
   SBlock stms -> do
     foldM_ checkStm (newFrame env) stms
     return env
   SIfElse e stma stmb -> do
-    checkExp e Type_bool env
+    checkExp e (WType Type_bool) env
     _ <- checkStm env stma
     _ <- checkStm env stmb
     return env
 
-checkExp :: Exp -> Type -> Env -> Err ()
-checkExp exp targetType env = check targetType env
-  where check = case exp of
-          ETrue -> checkEqual Type_bool
-          EFalse -> checkEqual Type_bool
-          EInt _ -> checkEqual Type_int
-          EDouble _ -> checkEqual Type_double
-          EId i -> \t _ -> do
-            t' <- findVarT i env
-            checkEqual t' t env
-          EApp i exps -> \t _ -> do
-            returnT <- findFunReturnT i env
-            checkEqual returnT t env
-            argTypes <- findFunArgTs i env
-            if (length exps == length argTypes)
-              then forM_ (zip argTypes exps) $ \(argT, argExp) ->
-              checkExp argExp argT env
-              else fail "Too little/not enough arguments"
-          EPDecr e -> checkPrePost e
-          EPIncr e -> checkPrePost e
-          EIncr e -> checkPrePost e
-          EDecr e -> checkPrePost e
-          ETimes a b -> checkNumBinOp a b
-          EDiv a b -> checkNumBinOp a b
-          EPlus a b -> checkNumBinOp a b
-          EMinus a b -> checkNumBinOp a b
-          -- FIXME these aren't right
-          ELt a b -> checkCompBinOp a b
-          EGt a b -> checkCompBinOp a b
-          ELtEq a b -> checkCompBinOp a b
-          EGtWq a b -> checkCompBinOp a b
-          EEq a b -> checkCompBinOp a b
-          ENEq a b -> checkCompBinOp a b
-          EAnd a b -> checkBoolBinOp a b
-          EOr a b -> checkBoolBinOp a b
-          EAss a b -> \t _ -> checkBinOp a b t
-        checkEqual _ Type_void _ = return ()
-        checkEqual t targetT _ =
-          if t == targetT
-          then return ()
-          else fail ("Types do not match " ++ show t
-                     ++ " (actual) " ++ show targetT ++ " (expected)")
-        checkBoolBinOp a b t _ = do
-          checkEqual Type_bool t env
-          checkBinOp a b Type_bool
-        checkCompBinOp a b t _ = do
-          checkEqual Type_bool t env
-          mplus ((checkExp a Type_int env) >> (checkExp b Type_int env))
-                ((checkExp a Type_double env) >> (checkExp b Type_double env))
-        checkNumBinOp a b t _ = do
-          mplus (checkEqual Type_int t env >> checkBinOp a b Type_int)
-                (checkEqual Type_double t env >> checkBinOp a b Type_double)
-        checkBinOp a b t = do
-          checkExp a t env
-          checkExp b t env
-        -- This is possible due to only identifiers being allowed for
-        -- pre/postfix increments
-        -- TODO use MonadPlus?
-        checkPrePost (EId i) t _ = do
-          idT <- findVarT i env
-          if idT `elem` [Type_int, Type_double]
-            then return ()
-            else fail "Can only be applied to int or double"
-          checkEqual idT t env
-        checkPrePost _ _ _ = do
-          fail "Pre/post incr/decr can only be applied to variables"
+checkExp :: Exp -> WType -> Env -> Err ()
+checkExp ETrue t env  = checkEqual (WType Type_bool) t
+checkExp EFalse t env = checkEqual (WType Type_bool) t
+checkExp (EInt _) t env = checkEqual (WType Type_int) t
+checkExp (EDouble _) t env = checkEqual (WType Type_double) t
+checkExp (EId i) t env = do
+  t' <- findVarT i env
+  checkEqual (WType t') t
+checkExp (EApp i exps) t env = do
+  returnT <- findFunReturnT i env
+  checkEqual (WType returnT) t
+  argTypes <- findFunArgTs i env
+  if (length exps == length argTypes)
+    then forM_ (zip argTypes exps) $ \(argT, argExp) ->
+    checkExp argExp (WType argT) env
+    else fail "Not enough arguments"
+checkExp (EPDecr e) t env = checkPrePost e env t
+checkExp (EPIncr e) t env = checkPrePost e env t
+checkExp (EIncr e) t env = checkPrePost e env t
+checkExp (EDecr e) t env = checkPrePost e env t
+checkExp (ETimes a b) t env = checkNumBinOp a b t env
+checkExp (EDiv a b) t env = checkNumBinOp a b t env
+checkExp (EPlus a b) t env = checkNumBinOp a b t env
+checkExp (EMinus a b) t env = checkNumBinOp a b t env
+-- FIXME these aren't right
+checkExp (ELt a b) t env = checkCompBinOp a b t env
+checkExp (EGt a b) t env = checkCompBinOp a b t env
+checkExp (ELtEq a b) t env = checkCompBinOp a b t env
+checkExp (EGtWq a b) t env = checkCompBinOp a b t env
+checkExp (EEq a b) t env = checkCompBinOp a b t env
+checkExp (ENEq a b) t env = checkCompBinOp a b t env
+checkExp (EAnd a b) t env = checkBoolBinOp a b t env
+checkExp (EOr a b) t env = checkBoolBinOp a b t env
+checkExp (EAss a b) t env = checkBinOp a b t env
+-- checkEqual _ Type_void _ = return ()
+
+checkPrePost :: Exp -> Env -> WType -> Err ()
+checkPrePost (EId i) env rType = do
+  idT <- findVarT i env
+  if idT `elem` [Type_int, Type_double]
+    then return ()
+    else fail "Can only be applied to int or double"
+  checkEqual (WType idT) rType
+checkPrePost _ _ _ = do
+  fail "Pre/post incr/decr can only be applied to variables"
+
+checkBoolBinOp :: Exp -> Exp -> WType -> Env -> Err ()
+checkBoolBinOp a b rType env = do
+  checkEqual (WType Type_bool) rType
+  checkBinOp a b (WType Type_bool) env
+
+checkCompBinOp :: Exp -> Exp -> WType -> Env -> Err ()
+checkCompBinOp a b t env = do
+  checkEqual (WType Type_bool) t
+  mplus ((checkExp a (WType Type_int) env) >> (checkExp b (WType Type_int) env))
+        ((checkExp a (WType Type_double) env) >> (checkExp b (WType Type_double) env))
+
+checkNumBinOp :: Exp -> Exp -> WType -> Env -> Err ()
+checkNumBinOp a b t env = do
+  mplus ((checkEqual (WType Type_int) t) >> checkBinOp a b (WType Type_int) env)
+        (checkEqual (WType Type_double) t >> checkBinOp a b (WType Type_double) env)
+
+checkBinOp :: Exp -> Exp -> WType -> Env -> Err ()
+checkBinOp a b t env = do
+  checkExp a t env
+  checkExp b t env
+
+-- actual -> expected -> message
+checkEqual :: WType -> WType -> Err ()
+checkEqual actual None = return ()
+checkEqual actual expected =
+  if actual == expected
+  then return ()
+  else fail ("Types do not match " ++ show actual
+             ++ " (actual) " ++ show expected ++ " (expected)")
 
 addDecl :: Env -> Id -> Type -> Err Env
 addDecl env i t = add i (VarT t) env
