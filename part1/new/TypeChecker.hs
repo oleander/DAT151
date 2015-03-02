@@ -20,9 +20,16 @@ typecheck (PDefs defs) = do
                  , ("readInt", Type_int, [])
                  , ("readDouble", Type_double, [])]
   startEnv <- newEnv $ (builtIns ++ map defToEnvPair defs)
+
+  validateExistenceOfMain defs
   mapM_ (checkDef startEnv) defs
 
 data WType = WType Type | None deriving (Show, Eq)
+
+validateExistenceOfMain :: [Def] -> Err ()
+validateExistenceOfMain [] = fail "can't find main"
+validateExistenceOfMain ((DFun _ (Id "main") _ _):_) = return ()
+validateExistenceOfMain (_:defs) = validateExistenceOfMain defs
 
 checkStm :: Env -> Stm -> Err Env
 checkStm env s = case s of
