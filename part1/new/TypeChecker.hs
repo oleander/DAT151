@@ -110,7 +110,7 @@ typeCheckComp :: Exp -> Exp -> Env -> Err Type
 typeCheckComp a b env = do
   t1 <- typeOfExp a env
   t2 <- typeOfExp b env
-  (selectHighest t1 t2) >> (return Type_bool)
+  (checkEqual (wrapT t1) (wrapT t2)) >> (return Type_bool)
 
 typeCheckBool :: Exp -> Exp -> Env -> Err Type
 typeCheckBool a b env = do
