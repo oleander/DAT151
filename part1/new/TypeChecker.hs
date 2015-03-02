@@ -111,7 +111,7 @@ typeCheckDuo :: Exp -> Exp -> Env -> Err Type
 typeCheckDuo a b env = do
   t1 <- typeOfExp a env
   t2 <- typeOfExp b env
-  selectHighest t1 t2
+  (checkEqual (wrapT t1) (wrapT t2)) >> return t1
 
 typeCheckComp :: Exp -> Exp -> Env -> Err Type
 typeCheckComp a b env = do
@@ -126,15 +126,6 @@ typeCheckBool a b env = do
   case (t1, t2) of
     (Type_bool, Type_bool) -> return Type_bool
     _                      -> fail $ "can't match " ++ show t1 ++ " with " ++ show t2
-
---checkVagueEqual :: Type -> Type -> Err Type
---checkVagueEqual Type_double Type_int = return ()
---checkVagueEqual Type_int Type_double = return ()
---checkVagueEqual Type_int _ = return ()
---checkVagueEqual Type_double _ = return ()
---checkVagueEqual Type_bool _ = fail "invalid types"
---checkVagueEqual Type_void _ = fail "invalid type"
---checkVagueEqual a b = fail $ "type " ++ (show a) ++ " don't match " ++ (show b)
 
 checkArgsWithParams :: [Type] -> [Exp] -> Env -> Err ()
 checkArgsWithParams [] [] _ = return ()
@@ -169,10 +160,10 @@ typeOfExp (EPDecr e) env = typeOfExp e env >>= isNum
 typeOfExp (EPIncr e) env = typeOfExp e env >>= isNum
 typeOfExp (EIncr e) env = typeOfExp e env >>= isNum
 typeOfExp (EDecr e) env = typeOfExp e env >>= isNum
-typeOfExp (ETimes a b) env = typeCheckDuo a b env
-typeOfExp (EDiv a b) env = typeCheckDuo a b env
-typeOfExp (EPlus a b) env = typeCheckDuo a b env
-typeOfExp (EMinus a b) env = typeCheckDuo a b env
+typeOfExp (ETimes a b) env = typeCheckDuo a b env >>= isNum
+typeOfExp (EDiv a b) env = typeCheckDuo a b env >>= isNum
+typeOfExp (EPlus a b) env = typeCheckDuo a b env >>= isNum
+typeOfExp (EMinus a b) env = typeCheckDuo a b env >>= isNum
 typeOfExp (ELt a b) env = typeCheckComp a b env
 typeOfExp (EGt a b) env = typeCheckComp a b env
 typeOfExp (ELtEq a b) env = typeCheckComp a b env
