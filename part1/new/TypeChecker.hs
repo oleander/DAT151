@@ -93,24 +93,24 @@ findVarT i env = do
     VarT t -> return t
     _ -> fail $ "Not a variable!" ++ show i
 
-selectHighest :: Type -> Type -> Type 
-selectHighest Type_double Type_int = Type_double
-selectHighest Type_int Type_double = Type_double
-selectHighest Type_int _ = Type_int
-selectHighest Type_double _ = Type_double
-selectHighest _ _ = error "not yet defined"
+selectHighest :: Type -> Type -> Err Type 
+selectHighest Type_double Type_int = return Type_double
+selectHighest Type_int Type_double = return Type_double
+selectHighest Type_int Type_int = return Type_int
+selectHighest Type_double Type_double = return Type_double
+selectHighest _ _ = fail "invalid types"
 
 typeCheckDuo :: Exp -> Exp -> Env -> Err Type
 typeCheckDuo a b env = do
   t1 <- typeOfExp a env
   t2 <- typeOfExp b env
-  (checkVagueEqual t1 t2) >> (return $ selectHighest t1 t2)
+  selectHighest t1 t2
 
 typeCheckComp :: Exp -> Exp -> Env -> Err Type
 typeCheckComp a b env = do
   t1 <- typeOfExp a env
   t2 <- typeOfExp b env
-  (checkVagueEqual t1 t2) >> (return Type_bool)
+  (selectHighest t1 t2) >> (return Type_bool)
 
 typeCheckBool :: Exp -> Exp -> Env -> Err Type
 typeCheckBool a b env = do
@@ -120,14 +120,14 @@ typeCheckBool a b env = do
     (Type_bool, Type_bool) -> return Type_bool
     _                      -> fail $ "can't match " ++ show t1 ++ " with " ++ show t2
 
-checkVagueEqual :: Type -> Type -> Err ()
-checkVagueEqual Type_double Type_int = return ()
-checkVagueEqual Type_int Type_double = return ()
-checkVagueEqual Type_int _ = return ()
-checkVagueEqual Type_double _ = return ()
-checkVagueEqual Type_bool Type_bool = return ()
-checkVagueEqual Type_void Type_void = return ()
-checkVagueEqual a b = fail $ "type " ++ (show a) ++ " don't match " ++ (show b)
+--checkVagueEqual :: Type -> Type -> Err Type
+--checkVagueEqual Type_double Type_int = return ()
+--checkVagueEqual Type_int Type_double = return ()
+--checkVagueEqual Type_int _ = return ()
+--checkVagueEqual Type_double _ = return ()
+--checkVagueEqual Type_bool _ = fail "invalid types"
+--checkVagueEqual Type_void _ = fail "invalid type"
+--checkVagueEqual a b = fail $ "type " ++ (show a) ++ " don't match " ++ (show b)
 
 checkArgsWithParams :: [Type] -> [Exp] -> Env -> Err ()
 checkArgsWithParams [] [] _ = return ()
