@@ -4,14 +4,12 @@ module Interpreter where
 import AbsCPP
 import PrintCPP
 import ErrM
-import Debug.Trace
 
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.Map as M
 import Data.IORef
 import Data.Maybe
-import Control.Monad.Trans.Maybe
 
 data Val
   = VInt Int
@@ -21,6 +19,8 @@ data Val
   | VUndefined
   deriving Show
 
+data Fun = Fun [Id] [Stm]
+type Env = (M.Map Id Fun, [IORef (M.Map Id Val)])
 
 interpret :: Program -> IO ()
 interpret (PDefs defs) = do
@@ -32,39 +32,32 @@ interpret (PDefs defs) = do
   invoke env (Id "main") []
   return ()
 
-up :: IO Val -> IO (Maybe Val)
-up x = fmap Just x
-
-nothing :: IO (Maybe Val)
-nothing = return Nothing
-
 exec :: Env -> Stm -> IO (Maybe Val)
-exec env s = case s of
-  SExp e -> do
-    up $ eval env e
-    nothing
-  SDecls t ids -> do
-    forM_ ids $ \i -> addVar env i VUndefined
-    nothing
-  SInit t i e -> do
-    eval env e >>= addVar env i
-    nothing
-  SReturn e -> do 
-    up $ eval env e
-  SWhile e stm -> do
-    cond <- eval env e
-    case cond of
-      (VBool True) -> do
-        exec env stm
-        exec env s
-      _ -> return Nothing
-  SBlock stms -> do
-    execStms env stms
-  SIfElse e stma stmb -> do
-    cond <- liftIO $ eval env e
-    case cond of
-      (VBool True) -> exec env stma
-      (VBool False) -> exec env stmb
+exec env (SExp e) = do
+  up $ eval env e
+  nothing
+exec env (SDecls t ids) = do
+  forM_ ids $ \i -> addVar env i VUndefined
+  nothing
+exec env (SInit t i e) = do
+  eval env e >>= addVar env i
+  nothing
+exec env (SReturn e) = do 
+  up $ eval env e
+exec env s@(SWhile e stm) = do
+  cond <- eval env e
+  case cond of
+    (VBool True) -> do
+      exec env stm
+      exec env s
+    _ -> return Nothing
+exec env (SBlock stms) = do
+  execStms env stms
+exec env (SIfElse e stma stmb) = do
+  cond <- liftIO $ eval env e
+  case cond of
+    (VBool True) -> exec env stma
+    (VBool False) -> exec env stmb
 
 execStms :: Env -> [Stm] -> IO (Maybe Val)
 execStms env stms = do
@@ -79,7 +72,6 @@ execStms' env (stm:stms) = do
     Nothing  -> execStms' env stms
     Just x -> return (Just x)
 
--- TODO undefined variables
 eval :: Env -> Exp -> IO Val
 eval env expr =
   case expr of
@@ -92,7 +84,6 @@ eval env expr =
       case val of
         VUndefined -> error $ "Undefined variable " ++ show i
         _ -> return val
-    -- FIXME
     EApp i args -> invoke env i args
     EPDecr e -> evalPost (\n -> n - 1) (\n -> n - 1) e
     EPIncr e -> evalPost (1 +) (1 +) e
@@ -122,7 +113,6 @@ eval env expr =
       current <- getVar env i
       updateNumVar env fd fi i
       return current
---    evalBinOp ::  -> Exp -> Exp -> IO Val
     evalBinOp fd fi a b = do
       a' <- eval env a
       b' <- eval env b
@@ -165,19 +155,19 @@ invoke env@(funs, frames) i argExps = do
       d <- execStms newEnv body
       return $ convert d
 
-getBool (VBool b) = b
+emptyEnv funs = do
+  initFrame <- newIORef M.empty
+  return (funs, [initFrame])
+
+up :: IO Val -> IO (Maybe Val)
+up x = fmap Just x
+
+nothing :: IO (Maybe Val)
+nothing = return Nothing
 
 convert :: Maybe Val -> Val
 convert (Just val) = val
 convert Nothing = VVoid
-
-
-data Fun = Fun [Id] [Stm]
-type Env = (M.Map Id Fun, [IORef (M.Map Id Val)])
-
-emptyEnv funs = do
-  initFrame <- newIORef M.empty
-  return (funs, [initFrame])
 
 newFrame :: Env -> IO Env
 newFrame (fs, vs) = do
