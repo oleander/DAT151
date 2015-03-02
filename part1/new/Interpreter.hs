@@ -32,48 +32,52 @@ interpret (PDefs defs) = do
   invoke env (Id "main") []
   return ()
 
-exec :: Env -> Stm -> MaybeT IO Val
+up :: IO Val -> IO (Maybe Val)
+up x = fmap Just x
+
+nothing :: IO (Maybe Val)
+nothing = return Nothing
+
+exec :: Env -> Stm -> IO (Maybe Val)
 exec env s = case s of
   SExp e -> do
-    liftIO $ eval env e
-    mzero
+    up $ eval env e
+    nothing
   SDecls t ids -> do
-    liftIO $ forM_ ids $ \i -> addVar env i VUndefined
-    mzero
+    forM_ ids $ \i -> addVar env i VUndefined
+    nothing
   SInit t i e -> do
-    liftIO $ eval env e >>= addVar env i
-    mzero
+    eval env e >>= addVar env i
+    nothing
   SReturn e -> do 
-    val <- liftIO $ eval env e
-    return val
+    up $ eval env e
   SWhile e stm -> do
-    cond <- liftIO $ eval env e
+    cond <- eval env e
     case cond of
       (VBool True) -> do
         exec env stm
         exec env s
-      _ -> mzero
+      _ -> return Nothing
   SBlock stms -> do
     execStms env stms
   SIfElse e stma stmb -> do
     cond <- liftIO $ eval env e
     case cond of
-      (VBool True) -> error $ show stma -- exec env stma
+      (VBool True) -> exec env stma
       (VBool False) -> exec env stmb
 
-execStms :: Env -> [Stm] -> MaybeT IO Val
+execStms :: Env -> [Stm] -> IO (Maybe Val)
 execStms env stms = do
   env' <- liftIO $ newFrame env
   execStms' env' stms
 
-execStms' :: Env -> [Stm] -> MaybeT IO Val
-execStms' env [] = mzero
+execStms' :: Env -> [Stm] -> IO (Maybe Val)
+execStms' env [] = return Nothing
 execStms' env (stm:stms) = do
-  value <-  exec env stm
-
+  value <- exec env stm
   case value of
     Nothing  -> execStms' env stms
-    Just x -> return x
+    Just x -> return (Just x)
 
 -- TODO undefined variables
 eval :: Env -> Exp -> IO Val
@@ -158,7 +162,7 @@ invoke env@(funs, frames) i argExps = do
       let (Fun args body) = lookupFun env i
       newEnv <- emptyEnv funs
       (forM_ (zip args argVals) $ \(arg, val) -> addVar newEnv arg val)
-      d <- runMaybeT $ execStms newEnv body
+      d <- execStms newEnv body
       return $ convert d
 
 getBool (VBool b) = b
