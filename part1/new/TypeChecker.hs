@@ -143,6 +143,11 @@ typeCheckEq a b env = do
   t2 <- typeOfExp b env
   checkEqual (wrapT t1) (wrapT t2) >> return Type_bool
 
+isNum :: Type -> Err Type
+isNum Type_int    = return Type_int
+isNum Type_double = return Type_double
+isNum _           = fail "not num"
+
 typeOfExp :: Exp -> Env -> Err Type
 typeOfExp ETrue _ = return Type_bool
 typeOfExp EFalse _ = return Type_bool
@@ -153,10 +158,10 @@ typeOfExp (EApp i exps) env = do
   returnT <- findFunReturnT i env
   argTypes <- findFunArgTs i env
   (checkArgsWithParams argTypes exps env) >> return returnT
-typeOfExp (EPDecr e) env = typeOfExp e env
-typeOfExp (EPIncr e) env = typeOfExp e env
-typeOfExp (EIncr e) env = typeOfExp e env
-typeOfExp (EDecr e) env = typeOfExp e env
+typeOfExp (EPDecr e) env = typeOfExp e env >>= isNum
+typeOfExp (EPIncr e) env = typeOfExp e env >>= isNum
+typeOfExp (EIncr e) env = typeOfExp e env >>= isNum
+typeOfExp (EDecr e) env = typeOfExp e env >>= isNum
 typeOfExp (ETimes a b) env = typeCheckDuo a b env
 typeOfExp (EDiv a b) env = typeCheckDuo a b env
 typeOfExp (EPlus a b) env = typeCheckDuo a b env
