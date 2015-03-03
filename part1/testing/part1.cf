@@ -49,7 +49,10 @@ DIFun. Def ::= Inline NEmptyFun;
 DFun. Def ::= NEmptyFun;
 
 -- Structs
-DStruct. Stm ::= "struct" Id "{" [Member] "}" ";";
+EStruct. Struct ::= "struct" Id "{" [Member] "}" ";";
+SStruct. Stm ::= Struct;
+DStruct. Def ::= Struct;
+
 SMemberDecl . Member ::= Type Id ;
 terminator Member ";" ;
 
