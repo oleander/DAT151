@@ -75,36 +75,43 @@ EInt . Exp16 ::= Integer ;
 EChar. Exp16 ::= Char ;
 ETrue. Exp16 ::= "true" ;
 EFalse. Exp16 ::= "false" ;
-EBoolNeg. Exp16 ::= "!" Exp ;
-EIndirection. Exp16 ::= "*" Exp ;
 EAddress. Exp16 ::= "&" Exp ;
+
 EIndex. Exp15 ::= Exp15 "[" Exp "]" ;
 ECall. Exp15 ::= Id "(" [Exp] ")" ;
-EDot. Exp14 ::= Exp14 "." Exp15 ;
-EArrow. Exp14 ::= Exp14 "->" Exp15 ;
-EPIncr. Exp14 ::= Exp15 "++" ;
-EPDecr. Exp14 ::= Exp15 "--" ;
-EIncr. Exp13 ::= "++" Exp14 ;
-EDecr. Exp13 ::= "--" Exp14 ;
-ENeg. Exp13 ::= "-" Exp14 ;
-EMul. Exp12 ::= Exp12 "*" Exp13 ;
-EDiv. Exp12 ::= Exp12 "/" Exp13 ;
-EMod. Exp12 ::= Exp12 "%" Exp13 ;
-EAdd. Exp11 ::= Exp11 "+" Exp12 ;
-ESub. Exp11 ::= Exp11 "-" Exp12 ;
-ELShift. Exp10 ::= Exp10 "<<" Exp11 ;
-ERShift. Exp10 ::= Exp10 ">>" Exp11 ;
-ELEq. Exp9 ::= Exp9 "<=" Exp10 ;
-EGEq. Exp9 ::= Exp9 ">=" Exp10 ;
-ELt. Exp9 ::= Exp9 "<" Exp10 ;
-EGt. Exp9 ::= Exp9 ">" Exp10 ;
-EEq. Exp8 ::= Exp8 "==" Exp9 ;
-ENEq. Exp8 ::= Exp8 "!=" Exp9 ;
-EAnd. Exp4 ::= Exp4 "&&" Exp5 ;
-EOr. Exp3 ::= Exp3 "||" Exp4 ;
-EAss. Exp2 ::= Exp3 "=" Exp2 ;
+EDot. Exp14 ::= Exp15 "." Exp14 ;
+EArrow. Exp14 ::= Exp15 "->" Exp14 ;
+
+EMod. Exp12 ::= Exp13 "%" Exp12 ;
+
+ELShift. Exp10 ::= Exp11 "<<" Exp10 ;
+ERShift. Exp10 ::= Exp11 ">>" Exp10 ;
+
+EPostIncr.  Exp14  ::= Exp15 "++" ;
+EPostDecr.  Exp14  ::= Exp15 "--" ;
+
+EPreIncr.   Exp13  ::= "++" Exp14 ;
+EPreDecr.   Exp13  ::= "--" Exp14 ;
+EBoolNeg. Exp13 ::= "!" Exp ;
+EIndirection. Exp13 ::= "*" Exp ;
+ENeg. Exp13 ::= "-" Exp13 ;
+
+ETimes.  Exp12  ::= Exp12 "*"  Exp13 ;
+EDiv.    Exp12  ::= Exp12 "/"  Exp13 ;
+EPlus.   Exp11  ::= Exp11 "+"  Exp12 ;
+EMinus.  Exp11  ::= Exp11 "-"  Exp12 ;
+ELt.     Exp9   ::= Exp10 "<"  Exp10 ;
+EGt.     Exp9   ::= Exp10 ">"  Exp10 ;
+ELtEq.   Exp9   ::= Exp10 "<=" Exp10 ;
+EGtEq.   Exp9   ::= Exp10 ">=" Exp10 ;
+EEq.     Exp8   ::= Exp9  "==" Exp9 ;
+ENEq.    Exp8   ::= Exp9  "!=" Exp9 ;
+EAnd.    Exp4   ::= Exp4  "&&" Exp5 ;
+EOr.     Exp3   ::= Exp3  "||" Exp4 ;
+EAss.    Exp2   ::= Exp3  "="  Exp2 ;
 EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
 EAssSub. Exp2 ::= Exp3 "-=" Exp2 ;
+
 ECond. Exp2 ::= Exp3 "?" Exp3 ":" Exp2 ;
 EException. Exp1 ::= "throw" Exp ;
 
