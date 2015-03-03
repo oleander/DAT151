@@ -10,7 +10,6 @@ comment "/*" "*/" ;
 TypeDef . Def ::=  "typedef" Type Id ";";
 TypeExp . Stm ::=  "typedef" Type Id ";";
 UsingDef . Def ::=  "using" Type ";";
--- TODO: Refactor
 TypeDefInitA . Def ::= Type [Id] ";" ;
 TypeDefInit . Def ::= Type [Id] "=" [P] ";" ;
 
@@ -19,27 +18,12 @@ EmptyFun . EFun ::= Type Id "(" [ArgDef] ")" ;
 DEmptyFunA . Def ::= Inline EFun ";" ;
 DEmptyFun. Def ::= EFun ";" ;
 
---EFun -> Type Id '(' . ListArgDef ')'                (rule 80)
---NEmptyFun -> Type Id '(' . ListArg ')' '{' ListStm '}'    (rule 94)
-
-
---ArgDef -> Type Id .                                 (rule 83)
---Arg -> Type Id .                                    (rule 94)
-
---EFun -> Type Id '(' . ListArgDef ')'                (rule 81)
---NEmptyFun -> Type Id '(' . ListArg ')' '{' ListStm '}'    (rule 92)
-
 -- Args
 ADeclBaseWOIdDef . ArgDef ::= Arg ;
 ADeclBaseWOId . ArgDef ::= T ;
 separator ArgDef "," ;
 
---ArgDef -> A .                                       (rule 85)
---Arg -> A .                                          (rule 89)
-
-
 ADeclBase . Arg ::= Type Id ;
--- ADeclBaseE . Arg ::= T ;
 ADeclBaseR . Arg ::= T Id;
 ADecl . Arg ::= Arg "=" Exp ;
 separator Arg "," ;
@@ -131,8 +115,7 @@ rules PType ::= "bool" | "int" | "double" | "void";
 PTyp . Type ::= PType ;
 QCns . Type ::= QualifiedConst;
 TRef. Type ::= Type "&" ;
---TPtr. Type ::= Type "*" ;
 TConst . T ::= "const" Type ;
-TConst . T ::= Type ;
+TConstE . T ::= Type ;
 
 token Id (letter (letter | digit | '_')*) ;
