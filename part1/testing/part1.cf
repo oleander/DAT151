@@ -106,7 +106,7 @@ ELtEq.   Exp9   ::= Exp10 "<=" Exp10 ;
 EGtEq.   Exp9   ::= Exp10 ">=" Exp10 ;
 EEq.     Exp8   ::= Exp9  "==" Exp9 ;
 ENEq.    Exp8   ::= Exp9  "!=" Exp9 ;
-EAnd.    Exp4   ::= Exp4  "&&" Exp5 ;
+EAnd.    Exp4   ::= Exp5  "&&" Exp4 ;
 EOr.     Exp3   ::= Exp3  "||" Exp4 ;
 EAss.    Exp2   ::= Exp3  "="  Exp2 ;
 EAssAdd. Exp2 ::= Exp3 "+=" Exp2 ;
