@@ -13,15 +13,15 @@ UsingDef . Def ::=  "using" Type ";";
 TypeDefInit . Def ::= Type [Id] "=" [P] ";" ;
 
 DInline . Inline ::= "inline" ;
-EmptyFun . EFun ::= Type Id "(" [ArgDef] ")" ";" ;
-DEmptyFunA . Def ::= Inline EFun ;
-DEmptyFun. Def ::= EFun ;
+EmptyFun . EFun ::= Type Id "(" [ArgDef] ")" ;
+DEmptyFunA . Def ::= Inline EFun ";" ;
+DEmptyFun. Def ::= EFun ";" ;
 
 ADeclBaseWOIdDef . ArgDef ::= Type ;
 ADeclBaseWOId . ArgDef ::= Type Id ;
 separator ArgDef "," ;
 
-NonEmptyFun . NEmptyFun ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+NonEmptyFun . NEmptyFun ::= EFun "{" [Stm] "}" ;
 DIFun. Def ::= Inline NEmptyFun;
 DFun. Def ::= NEmptyFun;
 
@@ -41,7 +41,7 @@ SExp . Stm2 ::= Exp ";" ;
 SE . P ::= Exp;
 separator nonempty P "," ;
 SInit . Stm ::= Type [Id] "=" [P] ";" ;
-SForBody . ForBody ::= "for" "(" Stm Stm Exp ")" ;
+SForBody . ForBody ::= "for" "(" Arg ";" Exp ";" Exp ")" ;
 SFor . Stm ::= ForBody Exp ";" ;
 SForWithBlock . Stm ::=  ForBody "{" [Stm] "}" ;
 SReturn. Stm ::= "return" Exp ";" ;
@@ -63,9 +63,8 @@ EQualifiedConst . Exp16 ::= QualifiedConst ;
 QualifiedConstElems . QualifiedConst ::= [QualifiedConstElem] ;
 separator nonempty QualifiedConstElem "::" ;
 
-StringElemx . StringElem ::= String ;
-EString . Exp16 ::= [StringElem] ;
-terminator nonempty StringElem "" ;
+EString . Exp16 ::= [String] ;
+terminator nonempty String "" ;
 
 EDouble. Exp16 ::= Double ;
 EInt . Exp16 ::= Integer ;
@@ -108,9 +107,11 @@ EException. Exp1 ::= "throw" Exp ;
 coercions Exp 16 ;
 separator Exp "," ;
 
-rules Type ::= "bool" | "int" | "double" | "void" | QualifiedConst;
+rules PType ::= "bool" | "int" | "double" | "void";
+PTyp . Type ::= PType ;
+QCns . Type ::= QualifiedConst;
 TRef. Type ::= Type "&" ;
-TPtr. Type ::= Type "*" ;
+--TPtr. Type ::= Type "*" ;
 TConst . T ::= "const" Type ;
 
 token Id (letter (letter | digit | '_')*) ;
