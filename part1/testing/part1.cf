@@ -40,6 +40,7 @@ separator ArgDef "," ;
 
 ADeclBase . Arg ::= Type Id ;
 ADeclBaseE . Arg ::= T ;
+ADeclBaseR . Arg ::= T Id;
 ADecl . Arg ::= Arg "=" Exp ;
 separator Arg "," ;
 
