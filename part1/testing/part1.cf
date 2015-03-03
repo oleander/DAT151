@@ -19,9 +19,28 @@ EmptyFun . EFun ::= Type Id "(" [ArgDef] ")" ;
 DEmptyFunA . Def ::= Inline EFun ";" ;
 DEmptyFun. Def ::= EFun ";" ;
 
-ADeclBaseWOIdDef . ArgDef ::= Type ;
-ADeclBaseWOId . ArgDef ::= Type Id ;
+--EFun -> Type Id '(' . ListArgDef ')'                (rule 80)
+--NEmptyFun -> Type Id '(' . ListArg ')' '{' ListStm '}'    (rule 94)
+
+
+--ArgDef -> Type Id .                                 (rule 83)
+--Arg -> Type Id .                                    (rule 94)
+
+--EFun -> Type Id '(' . ListArgDef ')'                (rule 81)
+--NEmptyFun -> Type Id '(' . ListArg ')' '{' ListStm '}'    (rule 92)
+
+-- Args
+ADeclBaseWOIdDef . ArgDef ::= Arg ;
+ADeclBaseWOId . ArgDef ::= Type ;
 separator ArgDef "," ;
+
+--ArgDef -> A .                                       (rule 85)
+--Arg -> A .                                          (rule 89)
+
+
+ADeclBase . Arg ::= Type Id ;
+ADecl . Arg ::= Arg "=" Exp ;
+separator Arg "," ;
 
 NonEmptyFun . NEmptyFun ::= EFun "{" [Stm] "}" ;
 DIFun. Def ::= Inline NEmptyFun;
@@ -31,12 +50,6 @@ DFun. Def ::= NEmptyFun;
 DStruct. Stm ::= "struct" Id "{" [Member] "}" ";";
 SMemberDecl . Member ::= Type Id ;
 terminator Member ";" ;
-
-separator Arg "," ;
-
--- ADeclBaseWOId . Arg ::= Type;
-ADeclBase . Arg ::= Type Id ;
-ADecl . Arg ::= Arg "=" Exp ;
 
 -- Statements
 SExp . Stm2 ::= Exp ";" ;
