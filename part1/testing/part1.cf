@@ -31,7 +31,7 @@ DEmptyFun. Def ::= EFun ";" ;
 
 -- Args
 ADeclBaseWOIdDef . ArgDef ::= Arg ;
-ADeclBaseWOId . ArgDef ::= Type ;
+ADeclBaseWOId . ArgDef ::= T ;
 separator ArgDef "," ;
 
 --ArgDef -> A .                                       (rule 85)
@@ -39,7 +39,7 @@ separator ArgDef "," ;
 
 
 ADeclBase . Arg ::= Type Id ;
-ADeclBaseE . Arg ::= T ;
+-- ADeclBaseE . Arg ::= T ;
 ADeclBaseR . Arg ::= T Id;
 ADecl . Arg ::= Arg "=" Exp ;
 separator Arg "," ;
@@ -60,7 +60,7 @@ terminator Member ";" ;
 SExp . Stm2 ::= Exp ";" ;
 SE . P ::= Exp;
 separator nonempty P "," ;
-SInit . Stm ::= Type [Id] "=" [P] ";" ;
+SInit . Stm ::= T [Id] "=" [P] ";" ;
 SForBody . ForBody ::= "for" "(" Arg ";" Exp ";" Exp ")" ;
 SFor . Stm ::= ForBody Exp ";" ;
 SForWithBlock . Stm ::=  ForBody "{" [Stm] "}" ;
@@ -70,7 +70,7 @@ SWhile. Stm ::= "while" "(" Exp ")" Stm ;
 SBlock. Stm ::= "{" [Stm] "}" ;
 SIfElse. Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
 SIf. Stm ::= "if" "(" Exp ")" Stm ;
-SDecls . Stm ::= Type [Id] ";" ;
+SDecls . Stm ::= T [Id] ";" ;
 
 coercions Stm 2 ;
 
@@ -133,5 +133,6 @@ QCns . Type ::= QualifiedConst;
 TRef. Type ::= Type "&" ;
 --TPtr. Type ::= Type "*" ;
 TConst . T ::= "const" Type ;
+TConst . T ::= Type ;
 
 token Id (letter (letter | digit | '_')*) ;
