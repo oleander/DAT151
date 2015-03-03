@@ -10,6 +10,8 @@ comment "/*" "*/" ;
 TypeDef . Def ::=  "typedef" Type Id ";";
 TypeExp . Stm ::=  "typedef" Type Id ";";
 UsingDef . Def ::=  "using" Type ";";
+-- TODO: Refactor
+TypeDefInitA . Def ::= Type [Id] ";" ;
 TypeDefInit . Def ::= Type [Id] "=" [P] ";" ;
 
 DInline . Inline ::= "inline" ;
