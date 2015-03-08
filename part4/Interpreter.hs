@@ -10,15 +10,7 @@ import Data.IORef
 import Data.Maybe
 import qualified Data.Map as Map
 
-data Val = VInt Int | Clos [Ident] Exp | VExp Exp deriving(Show)
-
---data Program =
---   Prog [Def]
---  deriving (Eq,Ord,Show,Read)
-
---data Def =
---   DDef Ident [Ident] Exp
---  deriving (Eq,Ord,Show,Read)
+data Val = VInt Integer | Clos [Ident] Val | VExp Exp deriving(Show)
 
 data Env = Env {
   scope :: [Map.Map Ident Val],
@@ -27,44 +19,49 @@ data Env = Env {
 
 interpret :: Program -> Bool -> Err Val
 interpret (Prog defs) _ = do
-  val <- findIdent (Id "main") env
+  env <- foldM defToClos emptyEnv defs
+  val <- findIdent (Ident "main") env
   case val of
-    Clos [] exp -> evalExp exp env
+    Clos [] (VExp exp) -> evalExp exp env
     Clos _ _    -> fail "main doesn't have any args"
-    _           -> fail "main is not an function"
-  where env = foldM defToClos emptyEnv defs
+    _           -> fail "main is not a function"
 
 evalExp :: Exp -> Env -> Err Val
 evalExp exp env =
   case exp of
     EVar i -> fail $ "not sure what to do with var " ++ show i -- VExp exp -- findIdent i env
-    EInt n -> return $ VInt exp
-    EApp e1 e2 ->
-      case (evalExp e1 env) of
-        Clos ident exp -> evalExp $ findAndReplace ident exp e2 $ env'
-        _              -> fail $ "can't apply " show e1 
+    EInt n -> return $ VInt n
+    EApp e1 e2 -> do
+      val <- evalExp e1 env 
+      case val of
+        Clos (ident:[]) (VExp exp) -> evalExp (findAndReplace ident exp e2) (addBlock env)
+        _              -> fail $ "can't apply " ++ show e1 
                             ++ " to " ++ show e2
-      where env' = addBlock env
-    EAbs i exp -> evalExp (Clos i exp) env
+    EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
     EAdd e1 e2 -> binOp (-) e1 e2 env
-    EIf this a b ->
-      case evalExp this env of
+    EIf this a b -> do
+      val <- evalExp this env
+      case val of
         VInt 1 -> evalExp a env
         VInt 0 -> evalExp b env
-        –      -> fail $ show exp ++ " is not an int"
-    ELt e1 e2 exp ->
-      case (evalExp e1 env, evalExp e2 env) of
+        e      -> fail $ show exp ++ " is not an int"
+    ELt e1 e2 -> do
+      v1 <- evalExp e1 env
+      v2 <- evalExp e2 env
+      case (v1, v2) of
         (VInt a, VInt b) -> 
           if a < b then return $ VInt 1
           else          return $ VInt 0
         (a           ,b) -> fail $ "can't compare " ++ show a ++ " with " ++  show b
 
-binOp :: (a -> a -> a) -> Exp -> Exp -> Env -> Err Val
-binOp op e1 e1 env =
-  case (evalExp e1 env, evalExp e2 env) of
-    (VInt a, VInt b) -> return $ VInt a `op` b
-    (a,           b) -> fail $ "can't  run " ++ show op ++ " on " ++ show a ++ " with " ++ show b
+binOp :: (Integer -> Integer -> Integer) -> Exp -> Exp -> Env -> Err Val
+binOp op e1 e2 env = do
+  v1 <- evalExp e1 env
+  v2 <- evalExp e2 env
+  case (v1, v2) of
+    (VInt a, VInt b) -> return $ VInt (a `op` b)
+    (a,           b) -> fail $ "can't  run " ++ " on " ++ show a ++ " with " ++ show b
 
 emptyEnv :: Env
 emptyEnv = Env {
@@ -72,19 +69,20 @@ emptyEnv = Env {
   callByName = True
 }
 
-deleteBlock :: Env
-deleteBlock = tail
+deleteBlock :: Env -> Env
+deleteBlock env@Env { scope = scope } = 
+  env { scope = tail scope }
 
 addBlock :: Env -> Env
 addBlock env@Env { scope = scope } = 
-  env { scope : Map.empty }
+  env { scope = (Map.empty : scope) }
 
 -- Add ident to scope
 addIdent :: Ident -> Val -> Env -> Err Env
-addIdent i exp env@Env{ scope = (scope:rest) } = 
+addIdent i val env@Env{ scope = (scope:rest) } = 
   if Map.member i scope
   then fail $ show i ++ " already declared"
-  else return env { scope = (Map.insert i scope) : rest }
+  else return $ env { scope = (Map.insert i val scope) : rest }
 
 -- Find ident in scope
 findIdent :: Ident -> Env -> Err Val
@@ -95,22 +93,23 @@ findIdent i env@Env{ scope = (scope:rest)} =
     Just val -> return val
     Nothing  -> findIdent i env { scope = rest }
 
-defToClos :: Def -> Env -> Err Env
-defToClos (DDef fun vars exp) env = 
+defToClos :: Env -> Def -> Err Env
+defToClos env (DDef fun vars exp) = 
   addIdent fun val env
   where val = defToClos' vars exp
 
 -- TODO: Rename this
 defToClos' :: [Ident] -> Exp -> Val
-defToClos' []         exp        = Clos [] exp
+defToClos' []         exp        = Clos [] (VExp exp)
 defToClos' (var:vars) exp        = 
-  Clos [var] $ defToClos' vars exp
+  Clos [var] $ (defToClos' vars exp)
+
 
 findAndReplace :: Ident -> Exp -> Exp -> Exp
 findAndReplace i from to =
   case from of
     EVar ident -> 
-      if ident == i then VExp exp
+      if ident == i then to
       else from
     EInt n -> EInt n
     EApp e1 e2 -> EApp (findAndReplace i e1 to) (findAndReplace i e1 to)
@@ -123,7 +122,6 @@ findAndReplace i from to =
       where this' = findAndReplace i this to
             a'    = findAndReplace i a to
             b'    = findAndReplace i b to
-    ELt e1 e2 exp -> ELt e1' e2' exp'
+    ELt e1 e2 -> ELt e1' e2'
       where e1' = findAndReplace i e1 to
             e2' = findAndReplace i e2 to
-            exp' = findAndReplace i exp to
