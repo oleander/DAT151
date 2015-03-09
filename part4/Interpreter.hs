@@ -26,17 +26,24 @@ interpret (Prog defs) _ = do
     Clos _ _    -> fail "main doesn't have any args"
     _           -> fail "main is not a function"
 
+findInVal :: Ident -> Val -> Exp -> Exp
+findInVal ident val replace =
+  case val of
+    Clos (i:[]) val -> 
+      if ident == i then undefined
+      else 
+    VExp exp            -> findAndReplace ident exp replace
+
 evalExp :: Exp -> Env -> Err Val
 evalExp exp env =
   case exp of
-    EVar i -> fail $ "not sure what to do with var " ++ show i -- VExp exp -- findIdent i env
+    EVar i -> findIdent i env
     EInt n -> return $ VInt n
     EApp e1 e2 -> do
       val <- evalExp e1 env 
       case val of
-        Clos (ident:[]) (VExp exp) -> evalExp (findAndReplace ident exp e2) (addBlock env)
-        _              -> fail $ "can't apply " ++ show e1 
-                            ++ " to " ++ show e2
+        Clos (ident:[]) val -> evalExp (findAndReplace ident exp e2) (addBlock env)
+        _              -> fail $ show val ++ show e2
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
     EAdd e1 e2 -> binOp (-) e1 e2 env

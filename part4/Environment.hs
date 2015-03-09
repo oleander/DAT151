@@ -28,16 +28,6 @@ deleteFrame = tail
 emptyEnv :: Environment k v
 emptyEnv = [Map.empty]
 
--- -- FIXME: This should fail with an Err
--- update :: (Ord k) => k -> v -> Environment k v -> Environment k v
--- update i v (f:e) =
---   if Map.member i f
---   then Map.insert i v f : e
---   else f : update i v e
--- update _ _ [] = error "could not update"
---update i v [] = Bad $ "could not update id " ++ (show i) ++
---  " with type " ++ (show v)
-
 add :: (Ord k, Show k) => k -> v -> Environment k v -> Err (Environment k v)
 add i v (f:e) =
   if Map.member i f
