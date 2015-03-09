@@ -26,13 +26,15 @@ interpret (Prog defs) _ = do
     Clos _ _    -> fail "main doesn't have any args"
     _           -> fail "main is not a function"
 
-findInVal :: Ident -> Val -> Exp -> Exp
-findInVal ident val replace =
+findAndReplaceInVal :: Ident -> Val -> Exp -> Val
+findAndReplaceInVal ident val replace =
   case val of
-    Clos (i:[]) val -> 
-      if ident == i then undefined
-      else 
-    VExp exp            -> findAndReplace ident exp replace
+    Clos (i:[]) val'    -> 
+      if ident == i then val
+      else Clos [i] $ findAndReplaceInVal ident val' replace
+    Clos [] val' -> Clos [] $ findAndReplaceInVal ident val' replace
+    VExp exp            -> VExp $ findAndReplace ident exp replace
+    e -> error $ "what to do?" ++ show e
 
 evalExp :: Exp -> Env -> Err Val
 evalExp exp env =
@@ -40,10 +42,11 @@ evalExp exp env =
     EVar i -> findIdent i env
     EInt n -> return $ VInt n
     EApp e1 e2 -> do
-      val <- evalExp e1 env 
-      case val of
-        Clos (ident:[]) val -> evalExp (findAndReplace ident exp e2) (addBlock env)
-        _              -> fail $ show val ++ show e2
+      -- Look up e1
+      fun <- evalExp e1 env 
+      case fun of
+        Clos (ident:[]) val -> return $ findAndReplaceInVal ident val e2
+        val              -> fail $ "not sure what to do" ++ show val ++ " => " ++ show e2
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
     EAdd e1 e2 -> binOp (-) e1 e2 env
