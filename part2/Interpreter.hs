@@ -21,10 +21,10 @@ data Val
 interpret :: Program -> IO ()
 interpret (PDefs defs) = do
   -- Build initial environment with all function definitions.
-  let argToId (ADecl _ id) = id
+  let argToId (ADecl _ id)           = id
       dfunToFun (DFun _ i args stms) = (i, Fun (map argToId args) stms)
-      defs' = map dfunToFun defs
-      env = (M.fromList $ defs', [])
+      defs'                          = map dfunToFun defs
+      env                            = (M.fromList $ defs', [])
   invoke env (Id "main") []
   return ()
 
