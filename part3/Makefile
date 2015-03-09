@@ -1,4 +1,5 @@
 all:
+	bnfc CPP.cf
 	happy -gca ParCPP.y
 	alex -g LexCPP.x
 	ghc --make TestCPP.hs -o TestCPP

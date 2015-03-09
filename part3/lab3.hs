@@ -7,12 +7,12 @@ import ParCPP
 import ErrM
 
 import TypeChecker
-import Interpreter
+import Compiler
 
 -- driver
 
-check :: String -> IO ()
-check s = case pProgram (myLexer s) of
+check :: String -> String -> IO ()
+check s file = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
                            exitFailure
@@ -21,11 +21,13 @@ check s = case pProgram (myLexer s) of
                             putStrLn "TYPE ERROR"
                             putStrLn err
                             exitFailure
-                          Ok _ -> interpret tree
+                          Ok _ -> compile tree file
 
 main :: IO ()
 main = do args <- getArgs
           case args of
-            [file] -> readFile file >>= check
-            _      -> do putStrLn "Usage: lab2 <SourceFile>"
+            [file] -> do
+              d <- readFile file
+              check d file
+            _      -> do putStrLn "Usage: lab3 <SourceFile>"
                          exitFailure
