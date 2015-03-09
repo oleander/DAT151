@@ -1,5 +1,6 @@
 AbsCPP.hs
 DocCPP.txt
+lab4
 *CPP.*
 
 dist
@@ -34,4 +35,3 @@ Testpart*
 /part2/PrintCPP.hs
 /part2/SkelCPP.hs
 /part2/TestCPP.hs
-lab4/lab4
