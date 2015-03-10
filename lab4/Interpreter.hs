@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 module Interpreter where
 
 import AbsCPP
@@ -29,8 +28,7 @@ valToExp (VInt i) = EInt i
 evalExp :: Exp -> Env -> Err Val
 evalExp exp env@Env{ callByValue = callByValue } =
   case exp of
-    EVar i -> a
-      where a = findIdent i env
+    EVar i -> findIdent i env
     EInt n -> return $ VInt n
     EApp e1 e2 -> do
       val <- evalExp e1 env
@@ -41,7 +39,7 @@ evalExp exp env@Env{ callByValue = callByValue } =
             evalExp (findAndReplace ident with (valToExp val2)) (addBlock env)
           else 
             evalExp (findAndReplace ident with e2) (addBlock env)
-        e                      -> fail $ "can't apply => " ++ printVal e ++ " on " ++ printVal e
+        e                      -> fail $ "can't apply " ++ printVal e ++ " on " ++ printVal e
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
     EAdd e1 e2 -> 
