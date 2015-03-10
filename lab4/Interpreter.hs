@@ -26,31 +26,31 @@ interpret (Prog defs) _ = do
 
 evalExp :: Exp -> Env -> Err Val
 evalExp exp env =
-  case exp of
-    EVar i -> do
-      val <- findIdent i env
-      
-      return val -- $ trace (show val) val
+  case trace ("==> " ++ printTree exp) exp of
+    EVar i -> a
+      where a = findIdent i env
     EInt n -> return $ VInt n
     EApp e1 e2 -> do
       -- Look up e1
       val <- evalExp e1 env 
-
-
       case val of
         VExp (EAbs ident with) -> 
           evalExp e' (addBlock env)
-          where e' = findAndReplace ident with e2
+          where e' = findAndReplace ident e2 with -- <== The problem
         e                      -> fail $ "can't apply => " ++ show e ++ " on " ++ show e1
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
-    EAdd e1 e2 -> binOp (-) e1 e2 env
+    EAdd e1 e2 -> 
+      binOp (+) e1 e2 env
+      where e1' = trace ("e1 " ++ show e1) e1
+            e2' = trace ("e2 " ++ show e2) e2
+
     EIf this a b -> do
       val <- evalExp this env
       case val of
         VInt 1 -> evalExp a env
         VInt 0 -> evalExp b env
-        e      -> fail $ show exp ++ " is not an int"
+        _      -> fail $ printVal val ++ " is not an int"
     ELt e1 e2 -> do
       v1 <- evalExp e1 env
       v2 <- evalExp e2 env
@@ -58,7 +58,11 @@ evalExp exp env =
         (VInt a, VInt b) -> 
           if a < b then return $ VInt 1
           else          return $ VInt 0
-        (a           ,b) -> fail $ "can't compare " ++ show a ++ " with " ++  show b
+        (a           ,b) -> fail $ "can't compare\n" ++ printVal a ++ "\nwith\n" ++  printVal b
+
+printVal :: Val -> String
+printVal (VInt n) = show n
+printVal (VExp e) = printTree e
 
 binOp :: (Integer -> Integer -> Integer) -> Exp -> Exp -> Env -> Err Val
 binOp op e1 e2 env = do
@@ -120,8 +124,8 @@ findAndReplace i from to =
     EAbs ident exp -> 
       if ident == i then from
       else EAbs ident (findAndReplace i exp to)
-    ESub e1 e2 -> ESub (findAndReplace i e1 to) (findAndReplace i e1 to)
-    EAdd e1 e2 -> EAdd (findAndReplace i e1 to) (findAndReplace i e1 to)
+    ESub e1 e2 -> ESub (findAndReplace i e1 to) (findAndReplace i e2 to)
+    EAdd e1 e2 -> EAdd (findAndReplace i e1 to) (findAndReplace i e2 to)
     EIf this a b -> EIf this' a' b'
       where this' = findAndReplace i this to
             a'    = findAndReplace i a to
