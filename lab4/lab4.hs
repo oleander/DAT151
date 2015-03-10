@@ -3,6 +3,7 @@ import System.Exit (exitFailure)
 
 import AbsCPP
 import LexCPP
+import PrintCPP
 import ParCPP
 import ErrM
 
@@ -20,7 +21,8 @@ check s c = case pProgram (myLexer s) of
                             putStrLn "ERROR:"
                             putStrLn err
                             exitFailure
-                          Ok value -> print value
+                          Ok (VInt e) -> print e
+                          Ok e -> print $ "ERROR: wrong return type " ++ show e
 
 main :: IO ()
 main = do args <- getArgs

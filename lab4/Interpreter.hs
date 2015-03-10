@@ -3,6 +3,7 @@ module Interpreter where
 
 import AbsCPP
 import PrintCPP
+import Debug.Trace
 import ErrM
 
 import Control.Monad
@@ -10,7 +11,7 @@ import Data.IORef
 import Data.Maybe
 import qualified Data.Map as Map
 
-data Val = VInt Integer | Clos [Ident] Val | VExp Exp deriving(Show)
+data Val = VInt Integer | VExp Exp deriving(Show)
 
 data Env = Env {
   scope :: [Map.Map Ident Val],
@@ -20,33 +21,27 @@ data Env = Env {
 interpret :: Program -> Bool -> Err Val
 interpret (Prog defs) _ = do
   env <- foldM defToClos emptyEnv defs
-  val <- findIdent (Ident "main") env
-  case val of
-    Clos [] (VExp exp) -> evalExp exp env
-    Clos _ _    -> fail "main doesn't have any args"
-    _           -> fail "main is not a function"
-
-findAndReplaceInVal :: Ident -> Val -> Exp -> Val
-findAndReplaceInVal ident val replace =
-  case val of
-    Clos (i:[]) val'    -> 
-      if ident == i then val
-      else Clos [i] $ findAndReplaceInVal ident val' replace
-    Clos [] val' -> Clos [] $ findAndReplaceInVal ident val' replace
-    VExp exp            -> VExp $ findAndReplace ident exp replace
-    e -> error $ "what to do?" ++ show e
+  VExp exp <- findIdent (Ident "main") env
+  evalExp exp env
 
 evalExp :: Exp -> Env -> Err Val
 evalExp exp env =
   case exp of
-    EVar i -> findIdent i env
+    EVar i -> do
+      val <- findIdent i env
+      
+      return val -- $ trace (show val) val
     EInt n -> return $ VInt n
     EApp e1 e2 -> do
       -- Look up e1
-      fun <- evalExp e1 env 
-      case fun of
-        Clos (ident:[]) val -> return $ findAndReplaceInVal ident val e2
-        val              -> fail $ "not sure what to do" ++ show val ++ " => " ++ show e2
+      val <- evalExp e1 env 
+
+
+      case val of
+        VExp (EAbs ident with) -> 
+          evalExp e' (addBlock env)
+          where e' = findAndReplace ident with e2
+        e                      -> fail $ "can't apply => " ++ show e ++ " on " ++ show e1
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
     EAdd e1 e2 -> binOp (-) e1 e2 env
@@ -106,14 +101,13 @@ findIdent i env@Env{ scope = (scope:rest)} =
 defToClos :: Env -> Def -> Err Env
 defToClos env (DDef fun vars exp) = 
   addIdent fun val env
-  where val = defToClos' vars exp
+  where val = VExp $ defToClos' vars exp
 
 -- TODO: Rename this
-defToClos' :: [Ident] -> Exp -> Val
-defToClos' []         exp        = Clos [] (VExp exp)
+defToClos' :: [Ident] -> Exp -> Exp
+defToClos' []         exp        = exp
 defToClos' (var:vars) exp        = 
-  Clos [var] $ (defToClos' vars exp)
-
+  EAbs var $ (defToClos' vars exp)
 
 findAndReplace :: Ident -> Exp -> Exp -> Exp
 findAndReplace i from to =
@@ -124,8 +118,8 @@ findAndReplace i from to =
     EInt n -> EInt n
     EApp e1 e2 -> EApp (findAndReplace i e1 to) (findAndReplace i e1 to)
     EAbs ident exp -> 
-      if ident == i then exp -- 
-      else findAndReplace i exp to
+      if ident == i then from
+      else EAbs ident (findAndReplace i exp to)
     ESub e1 e2 -> ESub (findAndReplace i e1 to) (findAndReplace i e1 to)
     EAdd e1 e2 -> EAdd (findAndReplace i e1 to) (findAndReplace i e1 to)
     EIf this a b -> EIf this' a' b'
