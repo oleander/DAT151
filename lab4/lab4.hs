@@ -21,9 +21,8 @@ check s c = case pProgram (myLexer s) of
                             putStrLn "ERROR:"
                             putStrLn err
                             exitFailure
-                          Ok (VInt e) -> print e
-                          Ok (VExp (EInt n)) -> print n
-                          Ok e -> print $ "ERROR: wrong return type on " ++ printVal e
+                          Ok (EInt n) -> print n
+                          Ok e -> print $ "ERROR: wrong return type for" ++ printTree e
 
 main :: IO ()
 main = do args <- getArgs
