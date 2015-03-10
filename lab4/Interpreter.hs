@@ -24,6 +24,10 @@ interpret (Prog defs) _ = do
   VExp exp <- findIdent (Ident "main") env
   evalExp exp env
 
+valToExp :: Val -> Exp
+valToExp (VExp e) = e
+valToExp (VInt i) = EInt i
+
 evalExp :: Exp -> Env -> Err Val
 evalExp exp env =
   case trace ("==> " ++ printTree exp) exp of
@@ -32,11 +36,13 @@ evalExp exp env =
     EInt n -> return $ VInt n
     EApp e1 e2 -> do
       -- Look up e1
-      val <- evalExp e1 env 
+      val <- evalExp e1 env
+      val2 <- evalExp e2 env
+
       case val of
         VExp (EAbs ident with) -> 
-          evalExp e' (addBlock env)
-          where e' = findAndReplace ident e2 with -- <== The problem
+          evalExp (trace ("AFTER " ++ show ident ++ " ===> " ++ printTree e') e') (addBlock env)
+          where e' = findAndReplace ident (trace ("BEFORE " ++ printTree with) with) (valToExp val2) -- <== The problem
         e                      -> fail $ "can't apply => " ++ show e ++ " on " ++ show e1
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
@@ -120,7 +126,7 @@ findAndReplace i from to =
       if ident == i then to
       else from
     EInt n -> EInt n
-    EApp e1 e2 -> EApp (findAndReplace i e1 to) (findAndReplace i e1 to)
+    EApp e1 e2 -> EApp (findAndReplace i e1 to) (findAndReplace i e2 to)
     EAbs ident exp -> 
       if ident == i then from
       else EAbs ident (findAndReplace i exp to)
