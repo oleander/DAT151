@@ -42,7 +42,7 @@ evalExp exp env =
       case val of
         VExp (EAbs ident with) -> 
           evalExp (trace ("AFTER " ++ show ident ++ " ===> " ++ printTree e') e') (addBlock env)
-          where e' = findAndReplace ident (trace ("BEFORE " ++ printTree with) with) (valToExp val2) -- <== The problem
+          where e' = findAndReplace ident (trace ("BEFORE " ++ printTree with) with) e2 -- (valToExp val2) -- <== The problem
         e                      -> fail $ "can't apply => " ++ show e ++ " on " ++ show e1
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
