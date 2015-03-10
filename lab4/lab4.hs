@@ -22,13 +22,14 @@ check s c = case pProgram (myLexer s) of
                             putStrLn err
                             exitFailure
                           Ok (VInt e) -> print e
-                          Ok e -> print $ "ERROR: wrong return type " ++ show e
+                          Ok (VExp (EInt n)) -> print n
+                          Ok e -> print $ "ERROR: wrong return type on " ++ printVal e
 
 main :: IO ()
 main = do args <- getArgs
           case args of
             [file]       -> readFile file >>= (\n -> check n True)
-            [file, "-n"] -> readFile file >>= (\n -> check n True)
-            [file, "-v"] -> readFile file >>= (\n -> check n False)
-            _      -> do putStrLn "Usage: lab2 <SourceFile>"
+            ["-n", file] -> readFile file >>= (\n -> check n False)
+            ["-v", file] -> readFile file >>= (\n -> check n True)
+            _      -> do putStrLn "Usage: lab4 <SourceFile>"
                          exitFailure

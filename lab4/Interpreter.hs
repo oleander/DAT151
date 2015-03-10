@@ -3,9 +3,7 @@ module Interpreter where
 
 import AbsCPP
 import PrintCPP
-import Debug.Trace
 import ErrM
-
 import Control.Monad
 import Data.IORef
 import Data.Maybe
@@ -15,12 +13,12 @@ data Val = VInt Integer | VExp Exp deriving(Show)
 
 data Env = Env {
   scope :: [Map.Map Ident Val],
-  callByName :: Bool
+  callByValue :: Bool
 }
 
 interpret :: Program -> Bool -> Err Val
-interpret (Prog defs) _ = do
-  env <- foldM defToClos emptyEnv defs
+interpret (Prog defs) callBy = do
+  env <- foldM defToClos (emptyEnv callBy) defs
   VExp exp <- findIdent (Ident "main") env
   evalExp exp env
 
@@ -29,28 +27,25 @@ valToExp (VExp e) = e
 valToExp (VInt i) = EInt i
 
 evalExp :: Exp -> Env -> Err Val
-evalExp exp env =
-  case trace ("==> " ++ printTree exp) exp of
+evalExp exp env@Env{ callByValue = callByValue } =
+  case exp of
     EVar i -> a
       where a = findIdent i env
     EInt n -> return $ VInt n
     EApp e1 e2 -> do
-      -- Look up e1
       val <- evalExp e1 env
-      val2 <- evalExp e2 env
-
       case val of
-        VExp (EAbs ident with) -> 
-          evalExp (trace ("AFTER " ++ show ident ++ " ===> " ++ printTree e') e') (addBlock env)
-          where e' = findAndReplace ident (trace ("BEFORE " ++ printTree with) with) e2 -- (valToExp val2) -- <== The problem
-        e                      -> fail $ "can't apply => " ++ show e ++ " on " ++ show e1
+        VExp (EAbs ident with) ->
+          if callByValue then do
+            val2 <- evalExp e2 env
+            evalExp (findAndReplace ident with (valToExp val2)) (addBlock env)
+          else 
+            evalExp (findAndReplace ident with e2) (addBlock env)
+        e                      -> fail $ "can't apply => " ++ printVal e ++ " on " ++ printVal e
     EAbs i e -> return $ VExp exp
     ESub e1 e2 -> binOp (-) e1 e2 env
     EAdd e1 e2 -> 
       binOp (+) e1 e2 env
-      where e1' = trace ("e1 " ++ show e1) e1
-            e2' = trace ("e2 " ++ show e2) e2
-
     EIf this a b -> do
       val <- evalExp this env
       case val of
@@ -76,17 +71,13 @@ binOp op e1 e2 env = do
   v2 <- evalExp e2 env
   case (v1, v2) of
     (VInt a, VInt b) -> return $ VInt (a `op` b)
-    (a,           b) -> fail $ "can't  run " ++ " on " ++ show a ++ " with " ++ show b
+    (a,           b) -> fail $ "can't run " ++ " on " ++ printVal a ++ " with " ++ printVal b
 
-emptyEnv :: Env
-emptyEnv = Env {
+emptyEnv :: Bool -> Env
+emptyEnv callBy = Env {
   scope      = [Map.empty],
-  callByName = True
+  callByValue = callBy
 }
-
-deleteBlock :: Env -> Env
-deleteBlock env@Env { scope = scope } = 
-  env { scope = tail scope }
 
 addBlock :: Env -> Env
 addBlock env@Env { scope = scope } = 
